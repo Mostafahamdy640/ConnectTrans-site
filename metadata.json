@@ -1,0 +1,7 @@
+{
+  "name": "ConnectTrans - منصة النقل والخدمات اللوجستية",
+  "description": "منصة متكاملة لإدارة النقل والخدمات اللوجستية تربط بين مكاتب النقل وأصحاب السيارات والشركات",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
