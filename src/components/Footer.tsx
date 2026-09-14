@@ -1,6 +1,5 @@
 import React from 'react';
-import { Truck, Download, ShieldCheck, Heart } from 'lucide-react';
-import { exportProjectToZip } from '../utils/zipExporter';
+import { Truck, ShieldCheck, Heart, MapPin, Phone, Mail } from 'lucide-react';
 import { PageId } from '../types';
 
 interface FooterProps {
@@ -20,7 +19,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Footer Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-slate-800">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pb-10 border-b border-slate-800">
           
           {/* Col 1 & 2: Brand Info */}
           <div className="lg:col-span-2 space-y-4">
@@ -107,21 +106,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>إصدار بوالص الشحن الإلكترونية</li>
               <li>التأمين الشامل على الحمولات</li>
             </ul>
-          </div>
-
-          {/* Col 5: Export / Source Code Actions */}
-          <div>
-            <h4 className="text-sm font-black text-white mb-4">ملف المشروع والمصدر</h4>
-            <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-              يمكنك تحميل الكود المصدري الكامل للموقع كملف مضغوط (ZIP) لتشغيله أو تعديله محلياً.
-            </p>
-            <button
-              onClick={() => exportProjectToZip()}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl transition-colors cursor-pointer shadow-md"
-            >
-              <Download className="w-4 h-4" />
-              <span>تحميل المشروع كاملاً (ZIP)</span>
-            </button>
           </div>
 
         </div>

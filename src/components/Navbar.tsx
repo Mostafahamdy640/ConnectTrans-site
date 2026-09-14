@@ -127,13 +127,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Mobile Menu Toggle */}
           <div className="flex sm:hidden items-center gap-2">
             <button
-              onClick={handleDownloadZip}
-              className="p-2 text-amber-800 bg-amber-100 rounded-lg"
-              title="تحميل ZIP"
-            >
-              <Download className="w-5 h-5" />
-            </button>
-            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-slate-700 hover:bg-slate-100 cursor-pointer"
               aria-label="القائمة"
