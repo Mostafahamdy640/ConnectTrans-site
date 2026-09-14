@@ -16,6 +16,7 @@ import {
 import corpOfficeImg from '../assets/images/corp_office_card_1789141808610.jpg';
 import semiTruckImg from '../assets/images/semi_truck_card_1789141825517.jpg';
 import agencyOfficeImg from '../assets/images/agency_office_card_1789141842403.jpg';
+import { ConnectTransWorkflowManager } from '../components/ConnectTransWorkflowManager';
 
 interface HomePageProps {
   onNavigate: (page: PageId) => void;
@@ -188,6 +189,11 @@ export const HomePage: React.FC<HomePageProps> = ({
             <ArrowLeft className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* 3. ConnectTrans Interactive Workflow Engine (Companies - Offices - Vehicle Owners) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ConnectTransWorkflowManager />
       </div>
 
       {/* 4. Promotional Banner */}

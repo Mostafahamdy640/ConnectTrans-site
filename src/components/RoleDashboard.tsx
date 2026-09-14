@@ -7,6 +7,7 @@ import {
 import { UserRole, UserAccount, Shipment, CommissionProfile } from '../types';
 import { calculateTripCommission } from '../data/egyptLocations';
 import { RequestLifecycleManager } from './RequestLifecycleManager';
+import { ConnectTransWorkflowManager } from './ConnectTransWorkflowManager';
 
 interface RoleDashboardProps {
   currentRole: UserRole;
@@ -29,7 +30,7 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
   onNavigateHome,
   onOpenAdmin,
 }) => {
-  const [selectedTab, setSelectedTab] = useState<'available' | 'my_trips' | 'wallet' | 'live_requests'>('available');
+  const [selectedTab, setSelectedTab] = useState<'available' | 'my_trips' | 'wallet' | 'live_requests' | 'workflow'>('workflow');
   const [governorateFilter, setGovernorateFilter] = useState('all');
   const [simulatedAcceptedId, setSimulatedAcceptedId] = useState<string | null>(null);
 
@@ -221,10 +222,21 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
         )}
 
         {/* Dashboard Navigation Tabs */}
-        <div className="flex border-b border-slate-200 mb-6 gap-2">
+        <div className="flex border-b border-slate-200 mb-6 gap-2 overflow-x-auto">
+          <button
+            onClick={() => setSelectedTab('workflow')}
+            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              selectedTab === 'workflow'
+                ? 'border-emerald-600 text-emerald-700 bg-emerald-50/70 font-black'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            🔄 منظومة ConnectTrans المتكاملة (الشركات - المكاتب - السيارات)
+          </button>
+
           <button
             onClick={() => setSelectedTab('available')}
-            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               selectedTab === 'available'
                 ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -526,6 +538,11 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
             </div>
 
           </div>
+        )}
+
+        {/* ================= TAB 0: CONNECTTRANS INTEGRATED WORKFLOW ================= */}
+        {selectedTab === 'workflow' && (
+          <ConnectTransWorkflowManager />
         )}
 
         {/* ================= TAB 4: CONNECTTRANS LIVE REQUESTS ================= */}

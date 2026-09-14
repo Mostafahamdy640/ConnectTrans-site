@@ -5,6 +5,8 @@ import {
   Vehicle, 
   Driver, 
   TransportRequest, 
+  TransportOfficeOffer,
+  CompanyDirectInquiry,
   RequestAcceptance, 
   Trip, 
   TripRating, 
@@ -21,6 +23,8 @@ export interface ConnectTransDatabase {
   vehicles: Vehicle[];
   drivers: Driver[];
   requests: TransportRequest[];
+  officeOffers: TransportOfficeOffer[];
+  companyInquiries: CompanyDirectInquiry[];
   acceptances: RequestAcceptance[];
   trips: Trip[];
   ratings: TripRating[];
@@ -335,7 +339,8 @@ export const INITIAL_CONNECTTRANS_DB: ConnectTransDatabase = {
       requiredQuantity: 3,
       remainingQuantity: 3,
       acceptedQuantity: 0,
-      status: 'open',
+      offersCount: 1,
+      status: 'has_offers',
       notes: 'بضاعة حساسة تحتاج سيارة صندوق مقفول ونظيفة',
       createdAt: '2026-02-02T10:00:00Z',
       contacts: {
@@ -343,6 +348,74 @@ export const INITIAL_CONNECTTRANS_DB: ConnectTransDatabase = {
         email: 'logistics@industries-eg.com',
         whatsapp: '01011223344'
       }
+    }
+  ],
+
+  // Transport Office Offers submitted on Requests
+  officeOffers: [
+    {
+      id: 'off-501',
+      requestId: 'req-1002',
+      requestNumber: 'REQ-2026-002',
+      officeId: 'office-delta-transport',
+      officeName: 'مكتب الدلتا لخدمات الشحن واللوجستيات',
+      officeCity: 'الإسكندرية',
+      offeredPricePerUnit: 2350,
+      availableQuantity: 3,
+      remainingQuantity: 3,
+      acceptedQuantity: 0,
+      truckTypesAvailable: 'سيارة جامبو مقفلة (صندوق نظيف ومؤمن)',
+      validUntil: '2026-03-30T00:00:00Z',
+      notes: 'جاهزون لتغطية كامل النقلات بسيارات مجهزة مع تأمين نقل بضائع',
+      status: 'active',
+      createdAt: '2026-02-02T14:30:00Z',
+      officeContacts: {
+        phone: '01234567891',
+        email: 'delta.office@logistics.eg',
+        whatsapp: '01234567891'
+      }
+    },
+    {
+      id: 'off-502',
+      requestId: 'req-1001',
+      requestNumber: 'REQ-2026-001',
+      officeId: 'office-connecttrans-internal',
+      officeName: 'ConnectTrans Direct Logistics (المكتب الداخلي المعتمد)',
+      officeCity: 'القاهرة',
+      offeredPricePerUnit: 3800,
+      availableQuantity: 4,
+      remainingQuantity: 4,
+      acceptedQuantity: 0,
+      truckTypesAvailable: 'تريلا فرش / سطحة مع أحزمة أمان متطورة',
+      validUntil: '2026-03-31T00:00:00Z',
+      notes: 'عرض مباشر تحت إشراف وضمان منصة ConnectTrans المباشر',
+      status: 'active',
+      createdAt: '2026-02-01T10:00:00Z',
+      officeContacts: {
+        phone: '01029384756',
+        email: 'operations@connecttrans.eg',
+        whatsapp: '01029384756'
+      }
+    }
+  ],
+
+  // Direct Inquiries & Cooperation Requests from Companies directly to ConnectTrans
+  companyInquiries: [
+    {
+      id: 'inq-801',
+      companyName: 'مجموعة النصر للمنتجات الغذائية والصناعية',
+      commercialRegister: '662819-EG',
+      contactPerson: 'أ/ خالد الصاوي (مدير المشتريات اللوجستية)',
+      phone: '01055667788',
+      email: 'logistics@elnasr-foods.com',
+      governorate: 'الشرقية',
+      city: 'مدينة العاشر من رمضان',
+      monthlyCargoVolumeTons: 650,
+      truckTypesNeeded: ['ثلاجة مبردة ومجمدة (Reefer)', 'جامبو مقفلة'],
+      cooperationType: 'long_term_contract',
+      notes: 'نرغب في إبرام عقد تعاون مباشر مع ConnectTrans لإدارة حركة النقل اليومية من المصنع لجميع المحافظات.',
+      status: 'new',
+      createdAt: '2026-02-03T11:00:00Z'
     }
   ],
 
@@ -561,6 +634,8 @@ export class ConnectTransStorage {
         vehicles: parsed.vehicles || INITIAL_CONNECTTRANS_DB.vehicles,
         drivers: parsed.drivers || INITIAL_CONNECTTRANS_DB.drivers,
         requests: parsed.requests || INITIAL_CONNECTTRANS_DB.requests,
+        officeOffers: parsed.officeOffers || INITIAL_CONNECTTRANS_DB.officeOffers,
+        companyInquiries: parsed.companyInquiries || INITIAL_CONNECTTRANS_DB.companyInquiries,
         acceptances: parsed.acceptances || INITIAL_CONNECTTRANS_DB.acceptances,
         trips: parsed.trips || INITIAL_CONNECTTRANS_DB.trips,
         ratings: parsed.ratings || INITIAL_CONNECTTRANS_DB.ratings,
@@ -585,7 +660,307 @@ export class ConnectTransStorage {
     }
   }
 
-  // Core Functional Rule: Accept Request and Decrement Quantity
+  // 1. Submit Company Direct Cooperation Inquiry / Registration
+  public submitCompanyInquiry(inquiryData: Omit<CompanyDirectInquiry, 'id' | 'createdAt' | 'status'>): CompanyDirectInquiry {
+    const db = this.getDatabase();
+    const id = `inq-${Date.now()}`;
+    const inquiry: CompanyDirectInquiry = {
+      ...inquiryData,
+      id,
+      status: 'new',
+      createdAt: new Date().toISOString()
+    };
+
+    db.companyInquiries.unshift(inquiry);
+
+    // Also ensure company exists or is created in companies list if not present
+    const existingComp = db.companies.find(c => c.companyName === inquiryData.companyName || c.contacts.phone === inquiryData.phone);
+    if (!existingComp) {
+      db.companies.push({
+        id: `comp-${Date.now()}`,
+        companyName: inquiryData.companyName,
+        displayName: inquiryData.companyName,
+        contactPerson: inquiryData.contactPerson,
+        commercialRegister: inquiryData.commercialRegister || 'تحت المراجعة',
+        taxCard: 'تحت المراجعة',
+        contacts: {
+          phone: inquiryData.phone,
+          email: inquiryData.email,
+          whatsapp: inquiryData.phone
+        },
+        governorate: inquiryData.governorate,
+        city: inquiryData.city,
+        status: 'pending',
+        documents: [],
+        createdAt: new Date().toISOString(),
+        notes: `طلب تعاون مباشر: ${inquiryData.cooperationType}`
+      });
+    }
+
+    db.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      actorId: 'company',
+      actorName: inquiryData.companyName,
+      actorRole: 'company',
+      action: 'COMPANY_DIRECT_INQUIRY',
+      entity: 'company',
+      entityId: id,
+      newValue: `طلب تعاون وتواصل مباشر مع ConnectTrans (${inquiryData.cooperationType})`,
+      timestamp: new Date().toISOString()
+    });
+
+    this.saveDatabase(db);
+    return inquiry;
+  }
+
+  // 2. Transport Office Submits Offer on Transport Request
+  public submitOfficeOffer(params: {
+    requestId: string;
+    officeId: string;
+    officeName: string;
+    officeCity: string;
+    offeredPricePerUnit: number;
+    availableQuantity: number;
+    truckTypesAvailable: string;
+    notes?: string;
+    officeContacts: { phone: string; email: string; whatsapp?: string };
+  }): { success: boolean; message: string; offer?: TransportOfficeOffer } {
+    const db = this.getDatabase();
+    const req = db.requests.find(r => r.id === params.requestId);
+    if (!req) {
+      return { success: false, message: 'طلب النقل غير موجود' };
+    }
+    if (req.status === 'closed' || req.remainingQuantity <= 0) {
+      return { success: false, message: 'عذراً، هذا الطلب مغلق ومكتمل النقلات' };
+    }
+    if (params.availableQuantity <= 0) {
+      return { success: false, message: 'يرجى تحديد كمية متاحة صحيحة' };
+    }
+
+    const offerId = `off-${Date.now()}`;
+    const newOffer: TransportOfficeOffer = {
+      id: offerId,
+      requestId: req.id,
+      requestNumber: req.requestNumber,
+      officeId: params.officeId,
+      officeName: params.officeName,
+      officeCity: params.officeCity,
+      offeredPricePerUnit: params.offeredPricePerUnit,
+      availableQuantity: params.availableQuantity,
+      remainingQuantity: params.availableQuantity,
+      acceptedQuantity: 0,
+      truckTypesAvailable: params.truckTypesAvailable,
+      notes: params.notes,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      officeContacts: params.officeContacts
+    };
+
+    db.officeOffers.unshift(newOffer);
+
+    // Update request state
+    req.offersCount = (req.offersCount || 0) + 1;
+    if (req.status === 'open') {
+      req.status = 'has_offers';
+    }
+
+    db.auditLogs.unshift({
+      id: `log-${Date.now()}`,
+      actorId: params.officeId,
+      actorName: params.officeName,
+      actorRole: 'office',
+      action: 'SUBMIT_OFFER',
+      entity: 'offer',
+      entityId: offerId,
+      newValue: `تقديم عرض بسعر ${params.offeredPricePerUnit} ج.م وكمية ${params.availableQuantity} شاحنة على الطلب ${req.requestNumber}`,
+      timestamp: new Date().toISOString()
+    });
+
+    this.saveDatabase(db);
+    return { 
+      success: true, 
+      message: `تم تقديم عرض مكتب النقل بنجاح على الطلب ${req.requestNumber}، وسيظهر فوراً لأصحاب السيارات للاختيار والقبول.`, 
+      offer: newOffer 
+    };
+  }
+
+  // 3. Vehicle Owner Accepts an Office Offer (The key user flow!)
+  public acceptOfficeOfferByVehicleOwner(params: {
+    offerId: string;
+    vehicleOwnerId: string;
+    vehicleOwnerName: string;
+    acceptedQuantity: number;
+    vehiclePlate?: string;
+    driverName?: string;
+    driverPhone?: string;
+    ownerContacts: { phone: string; email: string; whatsapp?: string };
+  }): { success: boolean; message: string; trip?: Trip; acceptance?: RequestAcceptance } {
+    const db = this.getDatabase();
+    const offerIndex = db.officeOffers.findIndex(o => o.id === params.offerId);
+    if (offerIndex === -1) {
+      return { success: false, message: 'عرض مكتب النقل غير موجود' };
+    }
+
+    const offer = db.officeOffers[offerIndex];
+    if (offer.status === 'exhausted' || offer.remainingQuantity <= 0) {
+      return { success: false, message: 'عذراً، هذا العرض تم استيفاء كافة كمياته المتاحة بالكامل' };
+    }
+
+    if (params.acceptedQuantity <= 0) {
+      return { success: false, message: 'يرجى تحديد كمية صحيحة أكبر من الصفر' };
+    }
+
+    if (params.acceptedQuantity > offer.remainingQuantity) {
+      return { 
+        success: false, 
+        message: `الكمية المطلوبة (${params.acceptedQuantity}) تتجاوز الكمية المتبقية المتاحة بالعرض (${offer.remainingQuantity})` 
+      };
+    }
+
+    const requestIndex = db.requests.findIndex(r => r.id === offer.requestId);
+    if (requestIndex === -1) {
+      return { success: false, message: 'طلب النقل المرتبط بهذا العرض غير متوفر' };
+    }
+    const request = db.requests[requestIndex];
+
+    // Check if request itself has remaining
+    const actualAccepted = Math.min(params.acceptedQuantity, request.remainingQuantity);
+    if (actualAccepted <= 0) {
+      return { success: false, message: 'عذراً، هذا الطلب مكتمل بالفعل' };
+    }
+
+    // Active fee profile (Trial = 0)
+    const activeFee = db.feeProfiles.find(f => f.isDefault) || db.feeProfiles[0];
+    const isTrial = activeFee.isTrialPromo;
+
+    // 1. Update Offer
+    const offerRemainingBefore = offer.remainingQuantity;
+    offer.remainingQuantity -= actualAccepted;
+    offer.acceptedQuantity += actualAccepted;
+    if (offer.remainingQuantity === 0) {
+      offer.status = 'exhausted';
+    } else {
+      offer.status = 'partially_accepted';
+    }
+
+    // 2. Update Request
+    const reqRemainingBefore = request.remainingQuantity;
+    const reqRemainingAfter = reqRemainingBefore - actualAccepted;
+    request.remainingQuantity = reqRemainingAfter;
+    request.acceptedQuantity += actualAccepted;
+    if (reqRemainingAfter === 0) {
+      request.status = 'closed';
+      request.closedAt = new Date().toISOString();
+    } else {
+      request.status = 'partially_accepted';
+    }
+
+    // 3. Create Acceptance Record linking all 3 parties (Company + Office + Vehicle Owner)
+    const acceptanceId = `acc-${Date.now()}`;
+    const acceptance: RequestAcceptance = {
+      id: acceptanceId,
+      requestId: request.id,
+      requestNumber: request.requestNumber,
+      offerId: offer.id,
+      intermediaryOfficeId: offer.officeId,
+      intermediaryOfficeName: offer.officeName,
+      acceptedByUserId: params.vehicleOwnerId,
+      acceptedByUserName: params.vehicleOwnerName,
+      acceptedByUserType: 'vehicle_owner',
+      acceptedQuantity: actualAccepted,
+      remainingBefore: reqRemainingBefore,
+      remainingAfter: reqRemainingAfter,
+      agreedPrice: offer.offeredPricePerUnit,
+      totalAmount: offer.offeredPricePerUnit * actualAccepted,
+      officeFee: isTrial ? 0 : activeFee.officeFee,
+      vehicleOwnerFee: isTrial ? 0 : activeFee.vehicleOwnerFee,
+      connectTransCommission: isTrial ? 0 : activeFee.connectTransCommission,
+      paymentStatus: isTrial ? 'waived' : 'pending',
+      status: 'active',
+      acceptedAt: new Date().toISOString(),
+      releasedContacts: {
+        creatorContacts: request.contacts,
+        acceptorContacts: params.ownerContacts,
+        officeContacts: offer.officeContacts,
+        releasedAt: new Date().toISOString(),
+      }
+    };
+    db.acceptances.unshift(acceptance);
+
+    // 4. Create Trip
+    const tripId = `trip-${Date.now()}`;
+    const tripNumber = `TRIP-EG-${Math.floor(1000 + Math.random() * 9000)}`;
+    const trip: Trip = {
+      id: tripId,
+      tripNumber,
+      requestId: request.id,
+      acceptanceId: acceptance.id,
+      offerId: offer.id,
+      intermediaryOfficeId: offer.officeId,
+      intermediaryOfficeName: offer.officeName,
+      shipperId: request.creatorId,
+      shipperName: request.creatorName,
+      shipperRole: request.creatorType,
+      transporterId: params.vehicleOwnerId,
+      transporterName: params.vehicleOwnerName,
+      transporterRole: 'vehicle_owner',
+      driverName: params.driverName || 'سائق معتمد',
+      driverPhone: params.driverPhone || params.ownerContacts.phone,
+      vehiclePlate: params.vehiclePlate || 'ط ع ص ٩١٨٢',
+      fromLocation: `${request.fromCity} (${request.fromGovernorate})`,
+      toLocation: `${request.toCity} (${request.toGovernorate})`,
+      cargoType: request.cargoType,
+      quantity: actualAccepted,
+      status: 'accepted',
+      statusHistory: [
+        { status: 'pending', timestamp: new Date().toISOString(), note: 'تم قبول عرض مكتب النقل بواسطة صاحب السيارة' },
+        { status: 'accepted', timestamp: new Date().toISOString(), note: `تم تحرير بيانات التواصل بين (الشركة، مكتب النقل: ${offer.officeName}، وصاحب السيارة: ${params.vehicleOwnerName})` }
+      ],
+      progressPercent: 15,
+      price: offer.offeredPricePerUnit * actualAccepted,
+      commission: isTrial ? 0 : activeFee.connectTransCommission,
+      createdAt: new Date().toISOString()
+    };
+    db.trips.unshift(trip);
+
+    // 5. Audit logs for each step
+    db.auditLogs.unshift({
+      id: `log-${Date.now()}-1`,
+      actorId: params.vehicleOwnerId,
+      actorName: params.vehicleOwnerName,
+      actorRole: 'vehicle_owner',
+      action: 'ACCEPT_OFFER',
+      entity: 'offer',
+      entityId: offer.id,
+      oldValue: `offer_rem: ${offerRemainingBefore}`,
+      newValue: `offer_rem: ${offer.remainingQuantity}, accepted_qty: ${actualAccepted}`,
+      metadata: { requestNumber: request.requestNumber, offerId: offer.id },
+      timestamp: new Date().toISOString()
+    });
+
+    db.auditLogs.unshift({
+      id: `log-${Date.now()}-2`,
+      actorId: 'system',
+      actorName: 'ConnectTrans Broker Engine',
+      actorRole: 'system',
+      action: 'CREATE_TRIP',
+      entity: 'trip',
+      entityId: trip.id,
+      newValue: `إنشاء الرحلة ${tripNumber} وتحرير بيانات التواصل للشركة ومكتب النقل وصاحب الشاحنة فوراً`,
+      metadata: { tripNumber, requestNumber: request.requestNumber },
+      timestamp: new Date().toISOString()
+    });
+
+    this.saveDatabase(db);
+    return {
+      success: true,
+      message: `تم قبول العرض بنجاح! تم إنشاء الرحلة ${tripNumber}، وتحديث الكمية المتبقية، وفتح بيانات التواصل لكافة الأطراف.`,
+      trip,
+      acceptance
+    };
+  }
+
+  // Direct Request Acceptance (Fallback / Direct)
   public acceptRequest(params: {
     requestId: string;
     acceptedByUserId: string;

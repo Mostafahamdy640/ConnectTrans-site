@@ -20,6 +20,7 @@ import {
 
 import { CommissionProfile } from '../types';
 import { calculateTripCommission, DEFAULT_COMMISSION_PROFILES } from '../data/egyptLocations';
+import { ConnectTransWorkflowManager } from '../components/ConnectTransWorkflowManager';
 
 interface BusinessConnectionsPageProps {
   onNavigateHome: () => void;
@@ -85,7 +86,12 @@ export const BusinessConnectionsPage: React.FC<BusinessConnectionsPageProps> = (
         }}
       />
 
-      {/* 2. Three Main Category Portals (Cards from design) */}
+      {/* 2. Full ConnectTrans Workflow & Interaction (Companies - Transport Offices - Vehicle Owners) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ConnectTransWorkflowManager />
+      </div>
+
+      {/* 3. Three Main Category Portals (Cards from design) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <BusinessConnections onSelectRole={onSelectRole} />
       </div>

@@ -9,6 +9,7 @@ import {
 import { CommissionProfile, CommissionTier, UserAccount, SitePageContent, UserRole } from '../types';
 import { calculateTripCommission } from '../data/egyptLocations';
 import { ConnectTransEntityManager } from './ConnectTransEntityManager';
+import { ConnectTransWorkflowManager } from './ConnectTransWorkflowManager';
 import { RequestLifecycleManager } from './RequestLifecycleManager';
 import { TripRatingManager } from './TripRatingManager';
 import { AuditAndBackupManager } from './AuditAndBackupManager';
@@ -32,7 +33,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateSiteContent,
   onNavigateToHome,
 }) => {
-  const [activeTab, setActiveTab] = useState<'entities' | 'requests' | 'trips' | 'commission' | 'backup' | 'cms'>('entities');
+  const [activeTab, setActiveTab] = useState<'workflow' | 'entities' | 'requests' | 'trips' | 'commission' | 'users' | 'backup' | 'cms'>('workflow');
   
   // Commission Profiles state
   const [profiles, setProfiles] = useState<CommissionProfile[]>(commissionProfiles);
@@ -236,15 +237,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* Navigation Tabs */}
         <div className="flex flex-wrap border-b border-slate-800 gap-2 mb-6">
           <button
-            onClick={() => setActiveTab('entities')}
+            onClick={() => setActiveTab('workflow')}
             className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
-              activeTab === 'entities'
+              activeTab === 'workflow'
                 ? 'border-amber-400 text-amber-300 bg-amber-500/10'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <ShieldCheck className="w-4 h-4 text-amber-400" />
-            <span>الشركات والمكاتب والمركبات والسائقين</span>
+            <span>منظومة ConnectTrans الكاملة (شركات - مكاتب - سيارات)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('entities')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'entities'
+                ? 'border-blue-500 text-blue-400 bg-blue-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-blue-400" />
+            <span>إدارة الحسابات والمركبات</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'users'
+                ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Users className="w-4 h-4 text-indigo-400" />
+            <span>مستخدمو النظام الأساسيون</span>
           </button>
 
           <button
@@ -307,6 +332,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <span>نصوص وصفحات الموقع (CMS)</span>
           </button>
         </div>
+
+        {/* ================= TAB: CONNECTTRANS WORKFLOW ================= */}
+        {activeTab === 'workflow' && (
+          <ConnectTransWorkflowManager />
+        )}
 
         {/* ================= TAB: CONNECTTRANS ENTITIES ================= */}
         {activeTab === 'entities' && (
