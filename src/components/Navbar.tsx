@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Truck, LogIn, UserPlus, Menu, X, Download, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { exportProjectToZip } from '../utils/zipExporter';
+import { Truck, LogIn, UserPlus, Menu, X, ShieldCheck } from 'lucide-react';
 import { PageId } from '../types';
 
 interface NavbarProps {
@@ -17,25 +16,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdmin,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [downloadingZip, setDownloadingZip] = useState(false);
-  const [downloadSuccess, setDownloadSuccess] = useState(false);
-
-  const handleDownloadZip = async () => {
-    setDownloadingZip(true);
-    try {
-      await exportProjectToZip();
-      setDownloadSuccess(true);
-      setTimeout(() => setDownloadSuccess(false), 4000);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDownloadingZip(false);
-    }
-  };
 
   const navLinks: { id: PageId; label: string }[] = [
     { id: 'home', label: 'الرئيسية' },
-    { id: 'dashboard', label: 'بوابات الفئات الـ 4' },
     { id: 'services', label: 'الخدمات' },
     { id: 'how-it-works', label: 'كيف تعمل المنصة' },
     { id: 'business', label: 'ConnectTrans' },
@@ -118,28 +101,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <ShieldCheck className="w-4 h-4 text-amber-950" />
               <span>لوحة الإدارة</span>
-            </button>
-
-            {/* Download Source Code ZIP Button (Direct user fulfillment) */}
-            <button
-              id="download-zip-btn"
-              onClick={handleDownloadZip}
-              disabled={downloadingZip}
-              title="تحميل كود المشروع كملف مضغوط ZIP"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer"
-            >
-              {downloadSuccess ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span className="text-emerald-700 font-bold">تم تحميل الـ ZIP!</span>
-                </>
-              ) : (
-                <>
-                  <Download className={`w-4 h-4 text-amber-700 ${downloadingZip ? 'animate-bounce' : ''}`} />
-                  <span className="hidden xl:inline">تحميل كود المشروع</span>
-                  <span className="px-1.5 py-0.5 bg-amber-200/80 rounded text-[10px] font-mono font-bold text-amber-950">.ZIP</span>
-                </>
-              )}
             </button>
 
             {/* Login Button */}
@@ -236,13 +197,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <LogIn className="w-4 h-4" />
               <span>تسجيل دخول</span>
-            </button>
-            <button
-              onClick={handleDownloadZip}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-lg cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>تحميل المشروع كاملاً بصيغة ZIP</span>
             </button>
           </div>
         </div>

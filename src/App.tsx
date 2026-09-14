@@ -15,8 +15,7 @@ import { RoleDetailsModal } from './components/RoleDetailsModal';
 import { ServiceDetailsModal } from './components/ServiceDetailsModal';
 import { BookingModal } from './components/BookingModal';
 import { PageId, UserRole, UserAccount, CommissionProfile, SitePageContent, Shipment } from './types';
-import { CheckCircle2, Download } from 'lucide-react';
-import { exportProjectToZip } from './utils/zipExporter';
+import { CheckCircle2 } from 'lucide-react';
 import { 
   INITIAL_COMMISSION_PROFILES, 
   INITIAL_USERS, 
@@ -134,23 +133,6 @@ export default function App() {
           <span className="text-xs sm:text-sm font-bold">{toastMessage}</span>
         </div>
       )}
-
-      {/* Floating Download Source ZIP Action Badge */}
-      <aside aria-label="تحميل المشروع" className="fixed bottom-5 left-5 z-40">
-        <button
-          onClick={() => exportProjectToZip()}
-          title="تحميل كود المشروع كملف مضغوط ZIP"
-          className="group flex items-center gap-2.5 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl shadow-xl border border-slate-700 transition-all hover:scale-105 cursor-pointer"
-        >
-          <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-            <Download className="w-4 h-4 group-hover:animate-bounce" />
-          </div>
-          <div className="text-right">
-            <span className="block text-xs font-black text-white">تحميل المشروع كاملاً</span>
-            <span className="block text-[10px] text-amber-400 font-mono">ZIP Source Code</span>
-          </div>
-        </button>
-      </aside>
 
       {/* Navigation Bar with Page Switching */}
       <Navbar
