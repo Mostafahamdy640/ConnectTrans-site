@@ -3,10 +3,15 @@ import {
   ShieldCheck, Users, Percent, Edit3, Settings, 
   CheckCircle2, XCircle, AlertCircle, Plus, Trash2, 
   DollarSign, TrendingUp, Search, Eye, Save, RefreshCw, 
-  Building2, Briefcase, Truck, Award, FileText, Check
+  Building2, Briefcase, Truck, Award, FileText, Check,
+  Layers, Database, Star
 } from 'lucide-react';
 import { CommissionProfile, CommissionTier, UserAccount, SitePageContent, UserRole } from '../types';
 import { calculateTripCommission } from '../data/egyptLocations';
+import { ConnectTransEntityManager } from './ConnectTransEntityManager';
+import { RequestLifecycleManager } from './RequestLifecycleManager';
+import { TripRatingManager } from './TripRatingManager';
+import { AuditAndBackupManager } from './AuditAndBackupManager';
 
 interface AdminPanelProps {
   users: UserAccount[];
@@ -27,7 +32,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateSiteContent,
   onNavigateToHome,
 }) => {
-  const [activeTab, setActiveTab] = useState<'commission' | 'users' | 'cms'>('commission');
+  const [activeTab, setActiveTab] = useState<'entities' | 'requests' | 'trips' | 'commission' | 'backup' | 'cms'>('entities');
   
   // Commission Profiles state
   const [profiles, setProfiles] = useState<CommissionProfile[]>(commissionProfiles);
@@ -229,43 +234,99 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-800 space-x-reverse space-x-2 mb-6">
+        <div className="flex flex-wrap border-b border-slate-800 gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('entities')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'entities'
+                ? 'border-amber-400 text-amber-300 bg-amber-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-amber-400" />
+            <span>الشركات والمكاتب والمركبات والسائقين</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'requests'
+                ? 'border-blue-500 text-blue-400 bg-blue-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-blue-400" />
+            <span>طلبات النقل والكميات والقبول</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('trips')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'trips'
+                ? 'border-cyan-500 text-cyan-400 bg-cyan-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Truck className="w-4 h-4 text-cyan-400" />
+            <span>الرحلات والتقييمات</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('commission')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
               activeTab === 'commission'
                 ? 'border-amber-500 text-amber-400 bg-amber-500/10'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Percent className="w-4 h-4" />
-            <span>نظام وبروفايلات العمولات للطرفين (Dynamic Multiplier)</span>
+            <span>العمولات والرسوم (الفترة التجريبية)</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${
-              activeTab === 'users'
-                ? 'border-blue-500 text-blue-400 bg-blue-500/10'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>إدارة الفئات الـ 4 والتوثيق والبيانات ({users.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('cms')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${
-              activeTab === 'cms'
+            onClick={() => setActiveTab('backup')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'backup'
                 ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Edit3 className="w-4 h-4" />
-            <span>تعديل محتوى ونصوص الصفحات (CMS)</span>
+            <Database className="w-4 h-4 text-emerald-400" />
+            <span>الحفظ الدائم والـ Backup وسجل العمليات</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('cms')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'cms'
+                ? 'border-purple-500 text-purple-400 bg-purple-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Edit3 className="w-4 h-4 text-purple-400" />
+            <span>نصوص وصفحات الموقع (CMS)</span>
           </button>
         </div>
+
+        {/* ================= TAB: CONNECTTRANS ENTITIES ================= */}
+        {activeTab === 'entities' && (
+          <ConnectTransEntityManager />
+        )}
+
+        {/* ================= TAB: REQUESTS & ACCEPTANCE ================= */}
+        {activeTab === 'requests' && (
+          <RequestLifecycleManager />
+        )}
+
+        {/* ================= TAB: TRIPS & RATINGS ================= */}
+        {activeTab === 'trips' && (
+          <TripRatingManager />
+        )}
+
+        {/* ================= TAB: BACKUP & AUDIT LOGS ================= */}
+        {activeTab === 'backup' && (
+          <AuditAndBackupManager />
+        )}
 
         {/* ================= TAB 1: COMMISSION SYSTEM ================= */}
         {activeTab === 'commission' && (

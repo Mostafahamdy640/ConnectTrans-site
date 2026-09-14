@@ -1,15 +1,272 @@
-export type UserRole = 'admin' | 'company' | 'office' | 'driver';
+// ConnectTrans Core Domain Entities & Types
+
+export type UserRole = 'admin' | 'company' | 'office' | 'vehicle_owner' | 'driver';
+
+export type AccountStatus = 'pending' | 'approved' | 'rejected' | 'suspended' | 'deleted';
 
 export type PageId = 'home' | 'services' | 'how-it-works' | 'business' | 'reviews' | 'contact' | 'faq' | 'dashboard' | 'admin';
 
-// Commission Tier Definition for dynamic profiles
+// Document uploaded by any party
+export interface VerificationDocument {
+  id: string;
+  name: string;
+  type: 'commercial_register' | 'tax_card' | 'national_id_front' | 'national_id_back' | 'driving_license_front' | 'driving_license_back' | 'vehicle_license' | 'other';
+  url: string;
+  uploadedAt: string;
+  status: 'pending' | 'verified' | 'rejected';
+}
+
+// Contacts structure
+export interface ContactDetails {
+  phone: string;
+  email: string;
+  whatsapp?: string;
+  facebook?: string;
+  telegram?: string;
+  otherContact?: string;
+}
+
+// 1. Company Entity
+export interface CompanyAccount {
+  id: string;
+  companyName: string;
+  displayName: string;
+  contactPerson: string;
+  commercialRegister: string;
+  taxCard: string;
+  contacts: ContactDetails;
+  governorate: string;
+  city: string;
+  status: AccountStatus;
+  documents: VerificationDocument[];
+  createdAt: string;
+  notes?: string;
+  isInternal?: boolean;
+}
+
+// 2. Transport Office Entity
+export interface TransportOfficeAccount {
+  id: string;
+  officeName: string;
+  displayName: string;
+  username: string;
+  commercialRegister: string;
+  taxCard: string;
+  contacts: ContactDetails;
+  governorate: string;
+  city: string;
+  status: AccountStatus;
+  documents: VerificationDocument[];
+  createdAt: string;
+  notes?: string;
+  isInternalConnectTrans?: boolean; // Represents ConnectTrans internal office
+  commissionRate?: number;
+}
+
+// 3. Vehicle Owner Entity
+export interface VehicleOwnerAccount {
+  id: string;
+  ownerName: string;
+  displayName: string;
+  contacts: ContactDetails;
+  governorate: string;
+  city: string;
+  status: AccountStatus;
+  documents: VerificationDocument[];
+  createdAt: string;
+  notes?: string;
+}
+
+// 4. Vehicle Entity
+export interface Vehicle {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  plateNumber: string;
+  vehicleType: string;
+  brand: string;
+  model: string;
+  year: number;
+  capacityTons: number;
+  cargoTypeAllowed: string;
+  licenseNumber: string;
+  status: AccountStatus;
+  documents: VerificationDocument[];
+  currentDriverId?: string;
+  currentDriverName?: string;
+  createdAt: string;
+  notes?: string;
+}
+
+// 5. Driver Entity
+export interface Driver {
+  id: string;
+  driverName: string;
+  contacts: ContactDetails;
+  governorate: string;
+  city: string;
+  nationalId: string;
+  licenseNumber: string;
+  ownerId?: string;
+  ownerName?: string;
+  assignedVehicleId?: string;
+  status: AccountStatus;
+  documents: VerificationDocument[];
+  createdAt: string;
+  notes?: string;
+}
+
+// 6. Transport Request (Marketplace & Direct)
+export type RequestType = 'marketplace' | 'direct_connecttrans';
+export type RequestStatus = 'open' | 'partially_accepted' | 'closed' | 'cancelled';
+
+export interface TransportRequest {
+  id: string;
+  requestNumber: string;
+  creatorId: string;
+  creatorType: 'company' | 'office';
+  creatorName: string;
+  creatorGovernorate: string;
+  creatorCity: string;
+  requestType: RequestType;
+  fromGovernorate: string;
+  fromCity: string;
+  toGovernorate: string;
+  toCity: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  truckType: string;
+  cargoType: string;
+  weightTons: number;
+  pricePerUnit: number;
+  requiredQuantity: number;
+  remainingQuantity: number;
+  acceptedQuantity: number;
+  status: RequestStatus;
+  notes?: string;
+  createdAt: string;
+  closedAt?: string;
+  // Contact details only released upon acceptance
+  contacts: ContactDetails;
+}
+
+// 7. Acceptance Record
+export interface RequestAcceptance {
+  id: string;
+  requestId: string;
+  requestNumber: string;
+  acceptedByUserId: string;
+  acceptedByUserName: string;
+  acceptedByUserType: 'office' | 'vehicle_owner';
+  acceptedQuantity: number;
+  remainingBefore: number;
+  remainingAfter: number;
+  agreedPrice: number;
+  totalAmount: number;
+  officeFee: number;
+  vehicleOwnerFee: number;
+  connectTransCommission: number;
+  paymentStatus: 'pending' | 'paid' | 'waived';
+  status: 'active' | 'cancelled';
+  acceptedAt: string;
+  releasedContacts: {
+    creatorContacts: ContactDetails;
+    acceptorContacts: ContactDetails;
+    releasedAt: string;
+  };
+  notes?: string;
+}
+
+// 8. Trip & Trip Assignment
+export type TripStatus = 'pending' | 'assigned' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface Trip {
+  id: string;
+  tripNumber: string;
+  requestId: string;
+  acceptanceId: string;
+  shipperId: string;
+  shipperName: string;
+  shipperRole: 'company' | 'office';
+  transporterId: string;
+  transporterName: string;
+  transporterRole: 'office' | 'vehicle_owner';
+  driverId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  vehiclePlate?: string;
+  fromLocation: string;
+  toLocation: string;
+  cargoType: string;
+  quantity: number;
+  status: TripStatus;
+  statusHistory: { status: TripStatus; timestamp: string; note?: string }[];
+  currentLocation?: string;
+  progressPercent: number;
+  price: number;
+  commission: number;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  ratedByShipper?: boolean;
+  ratedByTransporter?: boolean;
+}
+
+// 9. Rating Entity (Enabled only AFTER Trip is completed)
+export interface TripRating {
+  id: string;
+  tripId: string;
+  tripNumber: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserRole: UserRole;
+  toUserId: string;
+  toUserName: string;
+  toUserRole: UserRole;
+  rating: number; // 1 to 5
+  comment: string;
+  createdAt: string;
+}
+
+// 10. Commission & Fees Profile
+export interface FeeProfile {
+  id: string;
+  name: string;
+  description: string;
+  isDefault: boolean;
+  isTrialPromo: boolean; // 0 fees during trial
+  officeFee: number;
+  vehicleOwnerFee: number;
+  connectTransCommission: number;
+  minTripPrice: number;
+  maxTripPrice: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 11. Audit Log Record
+export interface AuditLog {
+  id: string;
+  actorId: string;
+  actorName: string;
+  actorRole: string;
+  action: 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'APPROVE' | 'REJECT' | 'SUSPEND' | 'DELETE' | 'EDIT' | 'CREATE_REQUEST' | 'ACCEPT_REQUEST' | 'CLOSE_REQUEST' | 'RELEASE_CONTACTS' | 'CHANGE_FEE' | 'UPDATE_TRIP' | 'COMPLETE_TRIP' | 'RATE_TRIP' | 'BACKUP_CREATED' | 'BACKUP_RESTORED';
+  entity: 'user' | 'company' | 'office' | 'vehicle_owner' | 'vehicle' | 'driver' | 'request' | 'acceptance' | 'trip' | 'fee_profile' | 'rating' | 'system';
+  entityId: string;
+  oldValue?: string;
+  newValue?: string;
+  metadata?: Record<string, any>;
+  timestamp: string;
+}
+
+// Legacy-compatible types for components
 export interface CommissionTier {
   id: string;
   minPrice: number;
   maxPrice: number;
   type: 'fixed' | 'percentage' | 'zero';
-  shipperFee: number;     // fee for company / shipper (e.g. 10 EGP or 2%)
-  transporterFee: number; // fee for driver / transporter
+  shipperFee: number;
+  transporterFee: number;
   label: string;
 }
 
@@ -18,7 +275,7 @@ export interface CommissionProfile {
   name: string;
   description: string;
   active: boolean;
-  multiplier: number; // e.g., 1x, 1.5x, 2x to easily double or scale commission
+  multiplier: number;
   tiers: CommissionTier[];
 }
 
@@ -86,4 +343,3 @@ export interface FaqItem {
   answer: string;
   category: 'general' | 'payment' | 'docs' | 'trucks';
 }
-

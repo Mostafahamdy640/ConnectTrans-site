@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { UserRole, UserAccount, Shipment, CommissionProfile } from '../types';
 import { calculateTripCommission } from '../data/egyptLocations';
+import { RequestLifecycleManager } from './RequestLifecycleManager';
 
 interface RoleDashboardProps {
   currentRole: UserRole;
@@ -28,7 +29,7 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
   onNavigateHome,
   onOpenAdmin,
 }) => {
-  const [selectedTab, setSelectedTab] = useState<'available' | 'my_trips' | 'wallet'>('available');
+  const [selectedTab, setSelectedTab] = useState<'available' | 'my_trips' | 'wallet' | 'live_requests'>('available');
   const [governorateFilter, setGovernorateFilter] = useState('all');
   const [simulatedAcceptedId, setSimulatedAcceptedId] = useState<string | null>(null);
 
@@ -252,6 +253,17 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
             }`}
           >
             المحفظة والفواتير وحساب العمولة
+          </button>
+
+          <button
+            onClick={() => setSelectedTab('live_requests')}
+            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              selectedTab === 'live_requests'
+                ? 'border-amber-500 text-amber-700 bg-amber-50/70'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            نظام طلبات النقل والكميات والقبول (ConnectTrans)
           </button>
         </div>
 
@@ -514,6 +526,11 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
             </div>
 
           </div>
+        )}
+
+        {/* ================= TAB 4: CONNECTTRANS LIVE REQUESTS ================= */}
+        {selectedTab === 'live_requests' && (
+          <RequestLifecycleManager />
         )}
 
       </div>
