@@ -56,6 +56,15 @@ class SafeAppBoundary extends Component<Props, State> {
   }
 }
 
+// Register Service Worker for PWA (Android / mobile installation)
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.log('SW registration note:', err);
+    });
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <SafeAppBoundary>
