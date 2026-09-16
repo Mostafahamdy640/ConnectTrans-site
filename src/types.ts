@@ -154,7 +154,7 @@ export interface CompanyDirectInquiry {
   truckTypesNeeded: string[];
   cooperationType: 'long_term_contract' | 'dedicated_fleet' | 'spot_shipments' | 'factory_integration';
   notes?: string;
-  status: 'new' | 'contacted' | 'contract_drafted' | 'approved';
+  status: 'new' | 'contacted' | 'contract_drafted' | 'approved' | 'rejected';
   createdAt: string;
 }
 
@@ -245,6 +245,7 @@ export interface Trip {
   toLocation: string;
   cargoType: string;
   quantity: number;
+  weightTons?: number;
   status: TripStatus;
   statusHistory: { status: TripStatus; timestamp: string; note?: string }[];
   currentLocation?: string;
@@ -296,7 +297,7 @@ export interface AuditLog {
   actorId: string;
   actorName: string;
   actorRole: string;
-  action: 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'APPROVE' | 'REJECT' | 'SUSPEND' | 'DELETE' | 'EDIT' | 'CREATE_REQUEST' | 'ACCEPT_REQUEST' | 'SUBMIT_OFFER' | 'ACCEPT_OFFER' | 'CREATE_TRIP' | 'COMPANY_DIRECT_INQUIRY' | 'CLOSE_REQUEST' | 'RELEASE_CONTACTS' | 'CHANGE_FEE' | 'UPDATE_TRIP' | 'COMPLETE_TRIP' | 'RATE_TRIP' | 'BACKUP_CREATED' | 'BACKUP_RESTORED';
+  action: 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'APPROVE' | 'REJECT' | 'SUSPEND' | 'DELETE' | 'EDIT' | 'CREATE_REQUEST' | 'ACCEPT_REQUEST' | 'SUBMIT_OFFER' | 'ACCEPT_OFFER' | 'CREATE_TRIP' | 'COMPANY_DIRECT_INQUIRY' | 'REVIEW_COMPANY_INQUIRY' | 'INPUT_AGREED_TRANSPORT_ORDER' | 'CLOSE_REQUEST' | 'RELEASE_CONTACTS' | 'CHANGE_FEE' | 'UPDATE_TRIP' | 'COMPLETE_TRIP' | 'RATE_TRIP' | 'BACKUP_CREATED' | 'BACKUP_RESTORED';
   entity: 'user' | 'company' | 'office' | 'vehicle_owner' | 'vehicle' | 'driver' | 'request' | 'offer' | 'acceptance' | 'trip' | 'fee_profile' | 'rating' | 'system';
   entityId: string;
   oldValue?: string;
