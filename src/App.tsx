@@ -11,23 +11,35 @@ import { FaqPage } from './pages/FaqPage';
 import { RoleDashboard } from './components/RoleDashboard';
 import { AdminPanel } from './components/AdminPanel';
 import { AuthModal } from './components/AuthModal';
+import { AdminSecurityModal } from './components/AdminSecurityModal';
 import { RoleDetailsModal } from './components/RoleDetailsModal';
 import { ServiceDetailsModal } from './components/ServiceDetailsModal';
 import { BookingModal } from './components/BookingModal';
 import { PageId, UserRole, UserAccount, CommissionProfile, SitePageContent, Shipment } from './types';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Lock, ArrowLeft } from 'lucide-react';
 import { 
   INITIAL_COMMISSION_PROFILES, 
   INITIAL_USERS, 
   INITIAL_SITE_CONTENT 
 } from './data/egyptLocations';
 import { SAMPLE_SHIPMENTS } from './data/mockData';
+import { ctStorage } from './data/connectTransStorage';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageId>('home');
   
-  // Dynamic Global State for RBAC & Admin Management
-  const [activeRole, setActiveRole] = useState<UserRole>('company');
+  // High-Security Authenticated Session State
+  // Initialized to null (Visitor Mode) by default or loaded from localStorage
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    try {
+      const saved = localStorage.getItem('ct_authenticated_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [activeRole, setActiveRole] = useState<UserRole>(currentUser?.role || 'company');
   const [commissionProfiles, setCommissionProfiles] = useState<CommissionProfile[]>(INITIAL_COMMISSION_PROFILES);
   const [usersList, setUsersList] = useState<UserAccount[]>(INITIAL_USERS);
   const [siteContent, setSiteContent] = useState<SitePageContent>(INITIAL_SITE_CONTENT);
@@ -38,8 +50,9 @@ export default function App() {
 
   // Modals state
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('register');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authInitialRole, setAuthInitialRole] = useState<UserRole>('company');
+  const [adminSecurityModalOpen, setAdminSecurityModalOpen] = useState(false);
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [selectedServiceKey, setSelectedServiceKey] = useState<string | null>(null);
@@ -56,12 +69,18 @@ export default function App() {
   };
 
   const handleNavigate = (page: PageId) => {
+    // High-security check for Admin route
+    if (page === 'admin' && currentUser?.role !== 'admin') {
+      setAdminSecurityModalOpen(true);
+      return;
+    }
+
     setCurrentPage(page);
     window.location.hash = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Sync hash routing
+  // Sync hash routing with security validation
   useEffect(() => {
     const syncPageFromHash = () => {
       const hash = window.location.hash.replace('#', '') as PageId;
@@ -70,13 +89,19 @@ export default function App() {
         'reviews', 'contact', 'faq', 'dashboard', 'admin'
       ];
       if (validPages.includes(hash)) {
-        setCurrentPage(hash);
+        if (hash === 'admin' && currentUser?.role !== 'admin') {
+          setCurrentPage('home');
+          window.location.hash = 'home';
+          setAdminSecurityModalOpen(true);
+        } else {
+          setCurrentPage(hash);
+        }
       }
     };
     syncPageFromHash();
     window.addEventListener('hashchange', syncPageFromHash);
     return () => window.removeEventListener('hashchange', syncPageFromHash);
-  }, []);
+  }, [currentUser]);
 
   const handleOpenAuth = (mode: 'login' | 'register', role: UserRole = 'company') => {
     setAuthMode(mode);
@@ -84,14 +109,61 @@ export default function App() {
     setAuthModalOpen(true);
   };
 
-  const handleAuthSuccess = (userData: { name: string; role: UserRole }) => {
-    setActiveRole(userData.role);
-    showToast(`مرحباً بك ${userData.name}! تم تسجيل حسابك بصلاحية [${
-      userData.role === 'admin' ? 'المدير العام والمشرفين' :
-      userData.role === 'company' ? 'الشركات والمصانع' :
-      userData.role === 'office' ? 'مكاتب النقل والوساطة' : 'صاحب سيارة / سائق'
-    }] بنجاح.`);
+  const handleAuthSuccess = (user: UserAccount) => {
+    setCurrentUser(user);
+    setActiveRole(user.role);
+    try {
+      localStorage.setItem('ct_authenticated_user', JSON.stringify(user));
+    } catch {
+      // ignore
+    }
+
+    const roleLabel = 
+      user.role === 'company' ? 'الشركات والمصانع' :
+      user.role === 'office' ? 'مكاتب النقل والوساطة' :
+      user.role === 'driver' ? 'أصحاب الشاحنات والسيارات' : 'الإدارة العامة';
+
+    showToast(`مرحباً بك ${user.name}! تم تسجيل الدخول بنجاح بصلاحية [${roleLabel}].`);
     handleNavigate('dashboard');
+  };
+
+  const handleAdminSuccess = (adminUser: UserAccount) => {
+    setCurrentUser(adminUser);
+    setActiveRole('admin');
+    try {
+      localStorage.setItem('ct_authenticated_user', JSON.stringify(adminUser));
+    } catch {
+      // ignore
+    }
+
+    showToast('تمت المصادقة الأمنية للمدير العام بنجاح! تم فتح لوحة الإدارة المركزية.');
+    setCurrentPage('admin');
+    window.location.hash = 'admin';
+  };
+
+  const handleLogout = () => {
+    if (currentUser) {
+      ctStorage.addAuditLog({
+        actorId: currentUser.id,
+        actorName: currentUser.name,
+        actorRole: currentUser.role,
+        action: 'LOGOUT',
+        entity: 'user',
+        entityId: currentUser.id,
+        newValue: 'تسجيل خروج آمن من الجلسة'
+      });
+    }
+
+    setCurrentUser(null);
+    setActiveRole('company');
+    try {
+      localStorage.removeItem('ct_authenticated_user');
+    } catch {
+      // ignore
+    }
+
+    showToast('تم تسجيل الخروج بنجاح. أهلاً بك دائماً في ConnectTrans.');
+    handleNavigate('home');
   };
 
   const handleBookShipment = (details: any) => {
@@ -113,15 +185,20 @@ export default function App() {
 
   const handleSelectRolePortal = (role: UserRole) => {
     if (role === 'admin') {
-      handleNavigate('admin');
+      if (currentUser?.role === 'admin') {
+        handleNavigate('admin');
+      } else {
+        setAdminSecurityModalOpen(true);
+      }
     } else {
-      setActiveRole(role);
-      handleNavigate('dashboard');
+      if (currentUser && currentUser.role === role) {
+        setActiveRole(role);
+        handleNavigate('dashboard');
+      } else {
+        handleOpenAuth('login', role);
+      }
     }
   };
-
-  // Current logged in simulated user matching activeRole
-  const currentActiveUser = usersList.find(u => u.role === activeRole) || usersList[0];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fafafa] text-slate-900 selection:bg-blue-600 selection:text-white relative">
@@ -134,12 +211,20 @@ export default function App() {
         </div>
       )}
 
-      {/* Navigation Bar with Page Switching */}
+      {/* Navigation Bar with Protected Session Awareness */}
       <Navbar
         currentPage={currentPage}
+        currentUser={currentUser}
         onNavigate={handleNavigate}
         onOpenAuth={handleOpenAuth}
-        onOpenAdmin={() => handleNavigate('admin')}
+        onOpenAdmin={() => {
+          if (currentUser?.role === 'admin') {
+            handleNavigate('admin');
+          } else {
+            setAdminSecurityModalOpen(true);
+          }
+        }}
+        onLogout={handleLogout}
       />
 
       {/* Main Single Page / View Renderer */}
@@ -148,54 +233,94 @@ export default function App() {
         {/* 1. Home Page */}
         {currentPage === 'home' && (
           <HomePage
+            currentUser={currentUser}
             onNavigate={handleNavigate}
             onOpenAuth={handleOpenAuth}
-            onSelectRole={(role) => setSelectedRole(role)}
-            onOpenAdmin={() => handleNavigate('admin')}
+            onSelectRole={handleSelectRolePortal}
             siteContent={siteContent}
           />
         )}
 
-        {/* 2. Role Dashboard: Specific portal & view for each of the 4 roles */}
+        {/* 2. Role Dashboard: Strictly Authenticated & Scoped to Current Role */}
         {currentPage === 'dashboard' && (
           <RoleDashboard
             currentRole={activeRole}
-            userAccount={currentActiveUser}
+            userAccount={currentUser}
             allShipments={shipmentsList}
             commissionProfile={activeCommissionProfile}
             onOpenBooking={() => setBookingModalOpen(true)}
             onSwitchRole={(role) => {
-              if (role === 'admin') {
-                handleNavigate('admin');
+              if (currentUser?.role === 'admin') {
+                if (role === 'admin') {
+                  handleNavigate('admin');
+                } else {
+                  setActiveRole(role);
+                }
               } else {
-                setActiveRole(role);
+                showToast('غير مصرح لك بتغيير الفئة بدون تسجيل دخول جديد بحساب معتمد.');
               }
             }}
             onNavigateHome={() => handleNavigate('home')}
-            onOpenAdmin={() => handleNavigate('admin')}
+            onOpenAdmin={() => {
+              if (currentUser?.role === 'admin') {
+                handleNavigate('admin');
+              } else {
+                setAdminSecurityModalOpen(true);
+              }
+            }}
+            onLogout={handleLogout}
+            onRequireLogin={(role) => handleOpenAuth('login', role || activeRole)}
           />
         )}
 
-        {/* 3. Central Super Admin Panel: Full permissions */}
+        {/* 3. Central Super Admin Panel: STRICTLY RESTRICTED to role === 'admin' */}
         {currentPage === 'admin' && (
-          <AdminPanel
-            users={usersList}
-            onUpdateUsers={(newUsers) => {
-              setUsersList(newUsers);
-              showToast('تم تحديث وتوثيق بيانات المستخدم بنجاح في النظام.');
-            }}
-            commissionProfiles={commissionProfiles}
-            onUpdateCommissionProfiles={(newProfiles) => {
-              setCommissionProfiles(newProfiles);
-              showToast('تم تحديث وتفعيل بروفايل العمولات الجديد بنجاح.');
-            }}
-            siteContent={siteContent}
-            onUpdateSiteContent={(newContent) => {
-              setSiteContent(newContent);
-              showToast('تم حفظ ونشر التعديلات على صفحات الموقع فورياً.');
-            }}
-            onNavigateToHome={() => handleNavigate('home')}
-          />
+          currentUser?.role === 'admin' ? (
+            <AdminPanel
+              users={usersList}
+              onUpdateUsers={(newUsers) => {
+                setUsersList(newUsers);
+                showToast('تم تحديث وتوثيق بيانات المستخدم بنجاح في النظام.');
+              }}
+              commissionProfiles={commissionProfiles}
+              onUpdateCommissionProfiles={(newProfiles) => {
+                setCommissionProfiles(newProfiles);
+                showToast('تم تحديث وتفعيل بروفايل العمولات الجديد بنجاح.');
+              }}
+              siteContent={siteContent}
+              onUpdateSiteContent={(newContent) => {
+                setSiteContent(newContent);
+                showToast('تم حفظ ونشر التعديلات على صفحات الموقع فورياً.');
+              }}
+              onNavigateToHome={() => handleNavigate('home')}
+            />
+          ) : (
+            <div className="min-h-[75vh] flex items-center justify-center p-4">
+              <div className="max-w-md w-full bg-slate-900 text-white rounded-3xl p-8 border border-slate-800 shadow-2xl text-center space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-black">منطقة إدارة محظورة</h3>
+                <p className="text-xs text-slate-400">
+                  لوحة الإدارة المركزية مخصصة للمدير العام والمشرفين المعتمدين بـ ConnectTrans فقط، وتتطلب مصادقة أمنية برمز المرور.
+                </p>
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    onClick={() => setAdminSecurityModalOpen(true)}
+                    className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-all cursor-pointer shadow-md"
+                  >
+                    إدخال رمز المرور السري للمصادقة
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('home')}
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    العودة للصفحة الرئيسية
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
         )}
 
         {/* 4. Services Page */}
@@ -220,13 +345,7 @@ export default function App() {
         {currentPage === 'business' && (
           <BusinessConnectionsPage
             onNavigateHome={() => handleNavigate('home')}
-            onSelectRole={(role) => {
-              if (role === 'admin') {
-                handleNavigate('admin');
-              } else {
-                setSelectedRole(role);
-              }
-            }}
+            onSelectRole={handleSelectRolePortal}
             onOpenAuth={handleOpenAuth}
             onBookShipment={handleBookShipment}
             activeCommissionProfile={activeCommissionProfile}
@@ -258,9 +377,12 @@ export default function App() {
 
       </main>
 
-      {/* Footer with page links (hide in Admin Panel to maximize workspace) */}
+      {/* Footer with page links and discreet secure admin portal trigger */}
       {currentPage !== 'admin' && (
-        <Footer onNavigate={handleNavigate} />
+        <Footer 
+          onNavigate={handleNavigate} 
+          onOpenAdminLogin={() => setAdminSecurityModalOpen(true)}
+        />
       )}
 
       {/* Interactive Modals */}
@@ -272,12 +394,18 @@ export default function App() {
         onSuccess={handleAuthSuccess}
       />
 
+      <AdminSecurityModal
+        isOpen={adminSecurityModalOpen}
+        onClose={() => setAdminSecurityModalOpen(false)}
+        onSuccess={handleAdminSuccess}
+      />
+
       <RoleDetailsModal
         role={selectedRole}
         onClose={() => setSelectedRole(null)}
         onProceedToRegister={(role) => {
           if (role === 'admin') {
-            handleNavigate('admin');
+            setAdminSecurityModalOpen(true);
           } else {
             handleOpenAuth('register', role);
           }

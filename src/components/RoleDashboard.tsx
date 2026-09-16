@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   Building2, Briefcase, Truck, ArrowLeft, CheckCircle2, 
   MapPin, ShieldCheck, DollarSign, Calendar, Clock, 
-  Search, Plus, Eye, Navigation, Phone, Check, RefreshCw
+  Search, Plus, Eye, Navigation, Phone, Check, RefreshCw,
+  LogOut, Lock
 } from 'lucide-react';
 import { UserRole, UserAccount, Shipment, CommissionProfile } from '../types';
 import { calculateTripCommission } from '../data/egyptLocations';
@@ -11,13 +12,15 @@ import { ConnectTransWorkflowManager } from './ConnectTransWorkflowManager';
 
 interface RoleDashboardProps {
   currentRole: UserRole;
-  userAccount?: UserAccount;
+  userAccount?: UserAccount | null;
   allShipments: Shipment[];
   commissionProfile: CommissionProfile;
   onOpenBooking: () => void;
   onSwitchRole: (role: UserRole) => void;
   onNavigateHome: () => void;
   onOpenAdmin?: () => void;
+  onLogout?: () => void;
+  onRequireLogin?: (role?: UserRole) => void;
 }
 
 export const RoleDashboard: React.FC<RoleDashboardProps> = ({
@@ -29,6 +32,8 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
   onSwitchRole,
   onNavigateHome,
   onOpenAdmin,
+  onLogout,
+  onRequireLogin,
 }) => {
   const [selectedTab, setSelectedTab] = useState<'available' | 'my_trips' | 'wallet' | 'live_requests' | 'workflow'>('workflow');
   const [governorateFilter, setGovernorateFilter] = useState('all');
@@ -48,25 +53,60 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
       badge: 'شاحن بضائع / مصنع',
       badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
       icon: Building2,
-      description: 'طلب سيارات وشاحنات فورية ومجدولة لنقل المنتجات والمواد الخام بين المحافظات والموانئ.',
+      description: 'تسجيل طلبات التعاون مع ConnectTrans، متابعة الشحنات والبوالص، وتقييم أداء النقل.',
     },
     office: {
       title: 'بوابة مكاتب النقل والوساطة المعتمدة',
-      badge: 'مكتب لوجستي',
+      badge: 'مكتب لوجستي مرخص',
       badgeBg: 'bg-amber-100 text-amber-900 border-amber-300',
       icon: Briefcase,
-      description: 'تنظيم شاحنات الأسطول، استقبال بوالص الشحن، وإسناد الرحلات للسائقين بأقل عمولة.',
+      description: 'استعراض طلبات النقل، تقديم عروض الأسعار الرسمية، وإسناد الرحلات للسائقين.',
     },
     driver: {
-      title: 'بوابة صاحب السيارة أو السائق (حمولات وعودة محملة)',
+      title: 'بوابة صاحب السيارة والسائق (حمولات وعودة محملة)',
       badge: 'مالك / سائق شاحنة',
       badgeBg: 'bg-blue-100 text-blue-900 border-blue-300',
       icon: Truck,
-      description: 'العثور على حمولات قريبة وفورية، وتأمين نقلات العودة لتفادي السير فارغاً مع أسرع سداد.',
+      description: 'تصفح عروض مكاتب النقل، قبول الشحنات وتحديد الكمية، وتجنب السير فارغاً مع سداد فوري.',
     },
   };
 
   const currentConfig = roleConfigs[currentRole] || roleConfigs.company;
+
+  // Security Wall: If not logged in, prompt authentication
+  if (!userAccount) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center p-4 bg-slate-50">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 mx-auto flex items-center justify-center">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900 mb-1">تسجيل الدخول مطلوب</h2>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              لوحة العمليات والتحكمات الخاصة بـ <strong className="text-slate-900">{currentConfig.title}</strong> مشفرة ومحمية. يرجى تسجيل الدخول للوصول إلى بياناتك وشحناتك.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-2.5">
+            <button
+              onClick={() => onRequireLogin && onRequireLogin(currentRole)}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+            >
+              <span>تسجيل الدخول كـ {currentConfig.badge}</span>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onNavigateHome}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              العودة إلى الصفحة الرئيسية
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleAcceptShipment = (id: string) => {
     setSimulatedAcceptedId(id);
@@ -85,10 +125,11 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
       
-      {/* Top Bar with Role Switcher */}
+      {/* Top Bar with Strict Security Identification */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
           
+          {/* Authenticated Identity Capsule */}
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black ${
               currentRole === 'company' ? 'bg-emerald-100 text-emerald-700' :
@@ -99,59 +140,79 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-slate-900">{currentConfig.title}</h1>
+                <h1 className="text-base sm:text-lg font-black text-slate-900">{userAccount.name}</h1>
                 <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${currentConfig.badgeBg}`}>
                   {currentConfig.badge}
                 </span>
+                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-mono">
+                  {userAccount.phone}
+                </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">{currentConfig.description}</p>
+              <p className="text-xs text-slate-500 hidden sm:block">
+                {userAccount.governorate} — {userAccount.city || 'المنطقة الصناعية'} | حالة التوثيق: معتمد رسمياً
+              </p>
             </div>
           </div>
 
-          {/* Role Preview Switcher Buttons */}
+          {/* Action and Permission Controls */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-500 hidden md:inline">عرض الصلاحية:</span>
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button
-                onClick={() => onSwitchRole('company')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  currentRole === 'company' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                الشركات
-              </button>
-              <button
-                onClick={() => onSwitchRole('driver')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  currentRole === 'driver' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                صاحب سيارة
-              </button>
-              <button
-                onClick={() => onSwitchRole('office')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  currentRole === 'office' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                مكتب نقل
-              </button>
-              <button
-                onClick={() => onSwitchRole('admin')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  currentRole === 'admin' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                المدير العام
-              </button>
-            </div>
+            
+            {/* ONLY Admin can switch preview roles for testing */}
+            {userAccount.role === 'admin' && (
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 px-1.5 hidden md:inline">محاكاة الفئات:</span>
+                <button
+                  onClick={() => onSwitchRole('company')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    currentRole === 'company' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  الشركات
+                </button>
+                <button
+                  onClick={() => onSwitchRole('office')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    currentRole === 'office' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  مكتب نقل
+                </button>
+                <button
+                  onClick={() => onSwitchRole('driver')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    currentRole === 'driver' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  صاحب سيارة
+                </button>
+                <button
+                  onClick={() => onSwitchRole('admin')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    currentRole === 'admin' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  إشراف عام
+                </button>
+              </div>
+            )}
 
             <button
               onClick={onNavigateHome}
-              className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer mr-2"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
             >
               الرئيسية
             </button>
+
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                title="تسجيل الخروج من الجلسة"
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1 border border-rose-200"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>خروج</span>
+              </button>
+            )}
           </div>
 
         </div>
@@ -197,6 +258,7 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
           </div>
         </div>
 
+        {/* If Admin logged in: supervisor banner */}
         {currentRole === 'admin' && (
           <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -206,7 +268,7 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
               <div>
                 <h4 className="text-sm font-black text-amber-950">أنت تتصفح بصلاحية المدير والمشرف العام (Admin)</h4>
                 <p className="text-xs text-amber-800">
-                  يمكنك الانتقال فورياً إلى لوحة الإدارة للتحكم في بروفايلات العمولات وتعديل بيانات أي فئة من الفئات الأربع وتعديل صفحات الموقع.
+                  يمكنك الانتقال فورياً إلى لوحة الإدارة للتحكم في بروفايلات العمولات وتعديل بيانات أي فئة من الفئات وتعديل صفحات الموقع.
                 </p>
               </div>
             </div>
@@ -221,336 +283,258 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
           </div>
         )}
 
-        {/* Dashboard Navigation Tabs */}
-        <div className="flex border-b border-slate-200 mb-6 gap-2 overflow-x-auto">
+        {/* Main Operational Tabs */}
+        <div className="flex border-b border-slate-200 mb-6 gap-2 sm:gap-4 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedTab('workflow')}
-            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`pb-3 text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap border-b-2 ${
               selectedTab === 'workflow'
-                ? 'border-emerald-600 text-emerald-700 bg-emerald-50/70 font-black'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            🔄 منظومة ConnectTrans المتكاملة (الشركات - المكاتب - السيارات)
+            منظومة التشغيل والربط الفوري الحية
           </button>
-
-          <button
-            onClick={() => setSelectedTab('available')}
-            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              selectedTab === 'available'
-                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            {currentRole === 'company' ? 'عروض الشاحنات والرحلات المتاحة' : 'الحمولات المعروضة في محافظات وقرى مصر'}
-          </button>
-          
-          <button
-            onClick={() => setSelectedTab('my_trips')}
-            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
-              selectedTab === 'my_trips'
-                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            رحلاتي النشطة والمكتملة (4)
-          </button>
-
-          <button
-            onClick={() => setSelectedTab('wallet')}
-            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
-              selectedTab === 'wallet'
-                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            المحفظة والفواتير وحساب العمولة
-          </button>
-
           <button
             onClick={() => setSelectedTab('live_requests')}
-            className={`px-5 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+            className={`pb-3 text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap border-b-2 ${
               selectedTab === 'live_requests'
-                ? 'border-amber-500 text-amber-700 bg-amber-50/70'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            نظام طلبات النقل والكميات والقبول (ConnectTrans)
+            دورة حياة الطلبات والبوالص المعتمدة
+          </button>
+          <button
+            onClick={() => setSelectedTab('available')}
+            className={`pb-3 text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap border-b-2 ${
+              selectedTab === 'available'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {currentRole === 'company' ? 'إجمالي طلبات الشحن المباشرة' : 'الحمولات المعروضة في المحافظات'}
+          </button>
+          <button
+            onClick={() => setSelectedTab('wallet')}
+            className={`pb-3 text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap border-b-2 ${
+              selectedTab === 'wallet'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            محفظة المعاملات والمستحقات
           </button>
         </div>
 
-        {/* ================= TAB 1: SHIPMENTS / LOADS ================= */}
+        {/* Tab 1: Workflow Manager (Scoped to current user) */}
+        {selectedTab === 'workflow' && (
+          <div className="space-y-6">
+            <ConnectTransWorkflowManager 
+              currentUser={userAccount}
+              onRequireAuth={(role) => onRequireLogin && onRequireLogin(role)}
+            />
+          </div>
+        )}
+
+        {/* Tab 2: Request Lifecycle Manager */}
+        {selectedTab === 'live_requests' && (
+          <div className="space-y-6">
+            <RequestLifecycleManager />
+          </div>
+        )}
+
+        {/* Tab 3: Available Shipments with Commission Calculation */}
         {selectedTab === 'available' && (
           <div className="space-y-6">
-            
-            {/* Filter Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <MapPin className="w-4 h-4 text-blue-600" />
-                <span>تصفية حسب نطاق المحافظات المصرية:</span>
+            {/* Filter */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Search className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-bold text-slate-700">تصفية حسب المحافظة:</span>
                 <select
                   value={governorateFilter}
                   onChange={(e) => setGovernorateFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 font-bold text-xs text-slate-900"
+                  className="px-3 py-1.5 text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl focus:outline-hidden"
                 >
-                  <option value="all">كافة محافظات مصر</option>
-                  <option value="القاهرة">القاهرة والجيزة</option>
-                  <option value="الإسكندرية">الإسكندرية والبحيرة</option>
-                  <option value="الشرقية">الشرقية والقليوبية والعاشر</option>
-                  <option value="الدقهلية">الدقهلية والغربية والمنوفية</option>
-                  <option value="السويس">السويس والعين السخنة</option>
-                  <option value="قنا">محافظات الصعيد (أسيوط / قنا / أسوان)</option>
+                  <option value="all">جميع المحافظات</option>
+                  <option value="القاهرة">القاهرة</option>
+                  <option value="الإسكندرية">الإسكندرية</option>
+                  <option value="السويس">السويس (العين السخنة)</option>
+                  <option value="بورسعيد">بورسعيد</option>
+                  <option value="الشرقية">الشرقية (العاشر من رمضان)</option>
+                  <option value="البحر الأحمر">البحر الأحمر</option>
                 </select>
               </div>
 
-              <span className="text-xs text-slate-500 font-medium">
-                يتم حساب العمولة تلقائياً بدقة وفقاً لتسعيرة الرحلة المعتمدة
+              <span className="text-xs font-bold text-slate-500">
+                إجمالي الشحنات المعروضة: {filteredShipments.length} شحنة
               </span>
             </div>
 
-            {/* Shipment Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {filteredShipments.map(s => {
-                const commission = calculateTripCommission(s.price, commissionProfile);
-                
+            {/* Shipments Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredShipments.map((shipment) => {
+                const commission = calculateTripCommission(shipment.price, commissionProfile);
+                const isAccepted = simulatedAcceptedId === shipment.id;
+                const driverNet = shipment.price - commission.transporterFee;
+
                 return (
-                  <div 
-                    key={s.id} 
-                    className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                  <div
+                    key={shipment.id}
+                    className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                   >
                     <div>
-                      {/* Top Header */}
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                        <div>
-                          <span className="text-[11px] font-mono text-slate-500 block">رقم الإذن: {s.trackingNumber}</span>
-                          <h4 className="text-base font-black text-slate-900">{s.sender}</h4>
-                        </div>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                          s.status === 'in_transit' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {s.status === 'in_transit' ? 'جاري النقل' : 'بانتظار سائق'}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-black border border-blue-200">
+                          {shipment.truckType}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-slate-400">
+                          #{shipment.id}
                         </span>
                       </div>
 
-                      {/* Route Locations (Exact Pickup & Dropoff) */}
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 text-xs font-black">
-                            م
-                          </div>
-                          <div>
-                            <span className="text-xs font-black text-slate-800 block">مكان التحميل: {s.fromCity}</span>
-                            {s.specificPickupLocation && (
-                              <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                                <Navigation className="w-3 h-3 text-emerald-600 inline" />
-                                <span>{s.specificPickupLocation}</span>
-                              </p>
-                            )}
-                          </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                          <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>من: {shipment.fromGovernorate} ({shipment.fromCity})</span>
                         </div>
-
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5 text-xs font-black">
-                            ت
-                          </div>
-                          <div>
-                            <span className="text-xs font-black text-slate-800 block">مكان التسليم والتفريغ: {s.toCity}</span>
-                            {s.specificDropoffLocation && (
-                              <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                                <Navigation className="w-3 h-3 text-rose-600 inline" />
-                                <span>{s.specificDropoffLocation}</span>
-                              </p>
-                            )}
-                          </div>
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                          <Navigation className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>إلى: {shipment.toGovernorate} ({shipment.toCity})</span>
+                        </div>
+                        <div className="text-xs text-slate-500 pt-1">
+                          نوع البضاعة: <strong className="text-slate-800">{shipment.cargoType}</strong> — {shipment.weightTons} طن
                         </div>
                       </div>
 
-                      {/* Cargo Details */}
-                      <div className="p-3 bg-slate-50 border border-slate-100 rounded-2xl grid grid-cols-2 gap-2 text-xs mb-4">
-                        <div>
-                          <span className="text-[11px] text-slate-500 block">نوع السيارة:</span>
-                          <span className="font-bold text-slate-800">{s.truckType}</span>
+                      {/* Pricing and Commission breakdown */}
+                      <div className="bg-slate-50 rounded-xl p-3 mb-4 space-y-1 text-xs border border-slate-100">
+                        <div className="flex justify-between font-bold text-slate-700">
+                          <span>سعر النقل المتفق عليه:</span>
+                          <span className="text-slate-900 font-mono font-black">{shipment.price.toLocaleString()} ج.م</span>
                         </div>
-                        <div>
-                          <span className="text-[11px] text-slate-500 block">الحمولة والوزن:</span>
-                          <span className="font-bold text-slate-800">{s.cargoType} ({s.weightTons} طن)</span>
+                        <div className="flex justify-between text-slate-500">
+                          <span>عمولة ConnectTrans ({commissionProfile.name}):</span>
+                          <span className="text-amber-600 font-mono font-bold">-{commission.totalCommission} ج.م</span>
                         </div>
-                      </div>
-
-                      {/* Pricing & Commission Breakdown for Both Parties */}
-                      <div className="p-3.5 bg-gradient-to-r from-blue-50/70 to-slate-50 border border-blue-200 rounded-2xl space-y-1.5 mb-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-600">صافي أجر النقل للرحلة:</span>
-                          <span className="text-lg font-black text-blue-700 font-mono">
-                            {s.price.toLocaleString()} ج.م
-                          </span>
+                        <div className="flex justify-between font-black text-emerald-700 pt-1 border-t border-slate-200 text-[13px]">
+                          <span>صافي مستحقات السائق:</span>
+                          <span className="font-mono">{driverNet.toLocaleString()} ج.م</span>
                         </div>
-
-                        <div className="border-t border-blue-200/80 pt-1.5 flex items-center justify-between text-[11px]">
-                          <span className="text-emerald-700 font-bold">
-                            عمولة الشركة: {commission.shipperFee.toLocaleString()} ج.م
-                          </span>
-                          <span className="text-blue-700 font-bold">
-                            عمولة السائق: {commission.transporterFee.toLocaleString()} ج.م
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-slate-500 block text-right font-medium">
-                          حسب شريحة: {commission.tierLabel}
-                        </span>
                       </div>
                     </div>
 
-                    {/* Bottom Action */}
-                    <div className="pt-2">
-                      {currentRole === 'driver' || currentRole === 'office' ? (
+                    {/* CTA Button */}
+                    <div>
+                      {currentRole === 'driver' && (
                         <button
-                          onClick={() => handleAcceptShipment(s.id)}
-                          disabled={simulatedAcceptedId === s.id}
-                          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                          onClick={() => handleAcceptShipment(shipment.id)}
+                          disabled={isAccepted}
+                          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
-                          {simulatedAcceptedId === s.id ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                              <span>جاري إسناد الرحلة وحجز البوليصة...</span>
-                            </>
+                          {isAccepted ? (
+                            <span>جاري إسناد الشحنة...</span>
                           ) : (
                             <>
                               <Check className="w-4 h-4" />
-                              <span>قبول الحمولة والاتصال للتنفيذ</span>
+                              <span>قبول الشحنة وتحميل فوري</span>
                             </>
                           )}
                         </button>
-                      ) : (
+                      )}
+
+                      {currentRole === 'office' && (
                         <button
-                          onClick={() => alert(`بيانات التواصل مع الشاحنة لمسار: ${s.fromCity} إلى ${s.toCity} متوفرة إلكترونياً.`)}
-                          className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                          onClick={() => alert(`تم تحديد الشحنة ${shipment.id} لتقديم عرض أو إسناد لسائقي المكتب.`)}
+                          className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          عرض تفاصيل ومسار الشاحنة
+                          <Briefcase className="w-4 h-4" />
+                          <span>تقديم عرض تسعير أو حجز</span>
                         </button>
                       )}
+
+                      {currentRole === 'company' && (
+                        <div className="text-center py-2 text-xs font-bold text-slate-500 bg-slate-100 rounded-xl">
+                          حالة الطلب: معروض لشبكة النقل
+                        </div>
+                      )}
+
+                      {currentRole === 'admin' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => alert(`تعديل الشحنة ${shipment.id}`)}
+                            className="flex-1 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-lg cursor-pointer"
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            onClick={() => alert(`إلغاء الشحنة ${shipment.id}`)}
+                            className="flex-1 py-2 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold rounded-lg cursor-pointer"
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      )}
                     </div>
+
                   </div>
                 );
               })}
             </div>
-
           </div>
         )}
 
-        {/* ================= TAB 2: MY TRIPS ================= */}
-        {selectedTab === 'my_trips' && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-black text-slate-900">سجل الرحلات والبوالص الصادرة</h3>
-              <span className="text-xs text-slate-500">تم توثيق كافة الرحلات مع إيصالات الاستلام الرقمية</span>
-            </div>
-
-            <div className="space-y-3">
-              {allShipments.map(s => (
-                <div key={s.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-black text-blue-700">{s.trackingNumber}</span>
-                      <span className="text-xs font-bold text-slate-800">{s.fromCity} ➔ {s.toCity}</span>
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      الحمولة: {s.cargoType} • الشاحنة: {s.truckType} • الحالة: {s.currentLocation}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <span className="text-sm font-black text-slate-900 block">{s.price.toLocaleString()} ج.م</span>
-                      <span className="text-[11px] text-emerald-600 font-bold">بوليصة مؤكدة</span>
-                    </div>
-                    <button 
-                      onClick={() => alert(`بوليصة الشحن الإلكترونية للرحلة ${s.trackingNumber} جاهزة للطباعة والتوقيع.`)}
-                      className="px-3 py-1.5 bg-white border border-slate-300 hover:border-slate-400 rounded-lg text-xs font-bold cursor-pointer"
-                    >
-                      عرض البوليصة
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ================= TAB 3: WALLET & COMMISSIONS ================= */}
+        {/* Tab 4: Wallet & Balances */}
         {selectedTab === 'wallet' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <span className="text-xs font-bold text-slate-500 block">رصيد الحساب المتاح للسحب / الشحن:</span>
-              <div className="text-3xl font-black text-slate-900 font-mono">
-                {userAccount ? userAccount.walletBalance.toLocaleString() : '14,850'} <span className="text-sm font-bold text-slate-500">ج.م</span>
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">محفظة المعاملات والمستحقات المالية</h3>
+                <p className="text-xs text-slate-500">حسابك المالي ورصيد التحويلات الفورية لبنك مصر / فودافون كاش / إنستاباي</p>
               </div>
-              <div className="pt-2 flex gap-2">
-                <button 
-                  onClick={() => alert('تم فتح بوابة الإيداع والشحن السريع عبر فودافون كاش أو إنستاباي أو الحساب البنكي')}
-                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl cursor-pointer"
-                >
-                  إيداع رصيد
-                </button>
-                <button 
-                  onClick={() => alert('طلب سحب الأرباح عبر إنستاباي أو المحفظة الذكية')}
-                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl cursor-pointer"
-                >
-                  سحب الرصيد
-                </button>
+              <div className="text-right bg-emerald-50 border border-emerald-200 px-5 py-3 rounded-2xl">
+                <span className="text-xs text-emerald-800 font-bold block">الرصيد المتاح للسحب الفوري:</span>
+                <span className="text-2xl font-black text-emerald-700 font-mono">
+                  {(userAccount.walletBalance || 4850).toLocaleString()} ج.م
+                </span>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs md:col-span-2 space-y-4">
-              <h4 className="text-sm font-black text-slate-900">سجل تسويات العمولات الأخيرة مع المنصة</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 font-black">
-                      <th className="pb-2">رقم الرحلة</th>
-                      <th className="pb-2">قيمة النقلة</th>
-                      <th className="pb-2">العمولة المقتطعة</th>
-                      <th className="pb-2">طريقة التسوية</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    <tr>
-                      <td className="py-2.5 font-mono">EG-90214</td>
-                      <td className="py-2.5">4,500 ج.م</td>
-                      <td className="py-2.5 text-emerald-600 font-bold">0 ج.م (مجاني - الفترة التجريبية)</td>
-                      <td className="py-2.5">معفاة بالكامل</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 font-mono">EG-88410</td>
-                      <td className="py-2.5">8,500 ج.م</td>
-                      <td className="py-2.5 text-emerald-600 font-bold">0 ج.م (مجاني - الفترة التجريبية)</td>
-                      <td className="py-2.5">معفاة بالكامل</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 font-mono">EG-66115</td>
-                      <td className="py-2.5">16,500 ج.م</td>
-                      <td className="py-2.5 text-emerald-600 font-bold">0 ج.م (مجاني - الفترة التجريبية)</td>
-                      <td className="py-2.5">معفاة بالكامل</td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs text-slate-500 block mb-1">إجمالي الرحلات المنفذة</span>
+                <span className="text-xl font-black text-slate-900 font-mono">
+                  {userAccount.completedTrips || 24} رحلة
+                </span>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs text-slate-500 block mb-1">التقييم العام للأداء</span>
+                <span className="text-xl font-black text-amber-500 font-mono flex items-center gap-1">
+                  ★ {userAccount.rating || 4.9} / 5.0
+                </span>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs text-slate-500 block mb-1">معدل التزام العمولة</span>
+                <span className="text-xl font-black text-emerald-600 font-mono">
+                  100% منتظم
+                </span>
               </div>
             </div>
 
+            <div className="pt-2 flex gap-3">
+              <button
+                onClick={() => alert('تم طلب سحب الأرباح بنجاح عبر InstaPay!')}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                طلب تحويل عبر InstaPay أو المحافظ الإلكترونية
+              </button>
+            </div>
           </div>
-        )}
-
-        {/* ================= TAB 0: CONNECTTRANS INTEGRATED WORKFLOW ================= */}
-        {selectedTab === 'workflow' && (
-          <ConnectTransWorkflowManager />
-        )}
-
-        {/* ================= TAB 4: CONNECTTRANS LIVE REQUESTS ================= */}
-        {selectedTab === 'live_requests' && (
-          <RequestLifecycleManager />
         )}
 
       </div>
+
     </div>
   );
 };

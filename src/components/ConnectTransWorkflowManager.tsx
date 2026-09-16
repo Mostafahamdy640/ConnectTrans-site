@@ -6,17 +6,34 @@ import {
   Clock, Award, Star, MessageSquare, Plus, FileText, CheckCircle
 } from 'lucide-react';
 import { ctStorage, ConnectTransDatabase } from '../data/connectTransStorage';
-import { TransportRequest, TransportOfficeOffer, RequestAcceptance, Trip } from '../types';
+import { TransportRequest, TransportOfficeOffer, RequestAcceptance, Trip, UserAccount, UserRole } from '../types';
 
-export const ConnectTransWorkflowManager: React.FC = () => {
+interface ConnectTransWorkflowManagerProps {
+  currentUser?: UserAccount | null;
+  onRequireAuth?: (role: UserRole) => void;
+}
+
+export const ConnectTransWorkflowManager: React.FC<ConnectTransWorkflowManagerProps> = ({
+  currentUser,
+  onRequireAuth,
+}) => {
   const [db, setDb] = useState<ConnectTransDatabase>(() => ctStorage.getDatabase());
-  const [activeWorkflowTab, setActiveWorkflowTab] = useState<'flow' | 'companies' | 'offices' | 'vehicle_owners' | 'trips_ratings'>('flow');
+  
+  const getInitialTab = (): 'flow' | 'companies' | 'offices' | 'vehicle_owners' | 'trips_ratings' => {
+    if (!currentUser) return 'flow';
+    if (currentUser.role === 'company') return 'companies';
+    if (currentUser.role === 'office') return 'offices';
+    if (currentUser.role === 'driver') return 'vehicle_owners';
+    return 'flow';
+  };
+
+  const [activeWorkflowTab, setActiveWorkflowTab] = useState<'flow' | 'companies' | 'offices' | 'vehicle_owners' | 'trips_ratings'>(getInitialTab);
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // 1. Company Cooperation Request Form State
-  const [compName, setCompName] = useState('');
+  const [compName, setCompName] = useState(currentUser?.role === 'company' ? currentUser.name : '');
   const [compPerson, setCompPerson] = useState('');
-  const [compPhone, setCompPhone] = useState('');
+  const [compPhone, setCompPhone] = useState(currentUser?.role === 'company' ? currentUser.phone : '');
   const [compEmail, setCompEmail] = useState('');
   const [compGov, setCompGov] = useState('السويس');
   const [compCity, setCompCity] = useState('العين السخنة');
@@ -36,8 +53,8 @@ export const ConnectTransWorkflowManager: React.FC = () => {
   const [selectedOfferForAccept, setSelectedOfferForAccept] = useState<TransportOfficeOffer | null>(null);
   const [ownerId, setOwnerId] = useState<string>('owner-ahmed-mansour');
   const [ownerAcceptQty, setOwnerAcceptQty] = useState<number>(1);
-  const [driverName, setDriverName] = useState<string>('أسامة فؤاد السقا');
-  const [driverPhone, setDriverPhone] = useState<string>('01511224466');
+  const [driverName, setDriverName] = useState<string>(currentUser?.role === 'driver' ? currentUser.name : 'أسامة فؤاد السقا');
+  const [driverPhone, setDriverPhone] = useState<string>(currentUser?.role === 'driver' ? currentUser.phone : '01511224466');
   const [vehiclePlate, setVehiclePlate] = useState<string>('ط ع ص ٩١٨٢');
 
   // 4. Rating State
@@ -52,6 +69,44 @@ export const ConnectTransWorkflowManager: React.FC = () => {
   const showMsg = (text: string, type: 'success' | 'error') => {
     setNotification({ text, type });
     setTimeout(() => setNotification(null), 5000);
+  };
+
+  const handleTabClick = (tab: 'flow' | 'companies' | 'offices' | 'vehicle_owners' | 'trips_ratings') => {
+    if (!currentUser) {
+      if (tab === 'flow' || tab === 'companies') {
+        setActiveWorkflowTab(tab);
+      } else {
+        showMsg('هذا القسم يتطلب تسجيل الدخول بحساب معتمد', 'error');
+        if (onRequireAuth) {
+          if (tab === 'offices') onRequireAuth('office');
+          else if (tab === 'vehicle_owners') onRequireAuth('driver');
+          else onRequireAuth('company');
+        }
+      }
+      return;
+    }
+
+    if (currentUser.role === 'admin') {
+      setActiveWorkflowTab(tab);
+      return;
+    }
+
+    if (currentUser.role === 'company' && (tab === 'offices' || tab === 'vehicle_owners')) {
+      showMsg('هذا القسم مخصص لمكاتب النقل وأصحاب السيارات المسجلين', 'error');
+      return;
+    }
+
+    if (currentUser.role === 'office' && tab === 'vehicle_owners') {
+      showMsg('قبول الحمولات متاح حصرياً لأصحاب السيارات والسائقين', 'error');
+      return;
+    }
+
+    if (currentUser.role === 'driver' && (tab === 'companies' || tab === 'offices')) {
+      showMsg('تقديم العروض والطلبات مخصص للشركات ومكاتب النقل', 'error');
+      return;
+    }
+
+    setActiveWorkflowTab(tab);
   };
 
   // Handler: Company direct inquiry / cooperation
@@ -231,7 +286,7 @@ export const ConnectTransWorkflowManager: React.FC = () => {
         {/* 4 Interactive Flow Tabs */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-6 pt-4 border-t border-slate-800/80">
           <button
-            onClick={() => setActiveWorkflowTab('flow')}
+            onClick={() => handleTabClick('flow')}
             className={`p-3 rounded-2xl text-xs font-black flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeWorkflowTab === 'flow' 
                 ? 'bg-blue-600 text-white shadow-md' 
@@ -243,7 +298,7 @@ export const ConnectTransWorkflowManager: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveWorkflowTab('companies')}
+            onClick={() => handleTabClick('companies')}
             className={`p-3 rounded-2xl text-xs font-black flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeWorkflowTab === 'companies' 
                 ? 'bg-emerald-600 text-white shadow-md' 
@@ -255,7 +310,7 @@ export const ConnectTransWorkflowManager: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveWorkflowTab('offices')}
+            onClick={() => handleTabClick('offices')}
             className={`p-3 rounded-2xl text-xs font-black flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeWorkflowTab === 'offices' 
                 ? 'bg-amber-600 text-white shadow-md' 
@@ -267,7 +322,7 @@ export const ConnectTransWorkflowManager: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveWorkflowTab('vehicle_owners')}
+            onClick={() => handleTabClick('vehicle_owners')}
             className={`p-3 rounded-2xl text-xs font-black flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
               activeWorkflowTab === 'vehicle_owners' 
                 ? 'bg-cyan-600 text-white shadow-md' 
@@ -279,7 +334,7 @@ export const ConnectTransWorkflowManager: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveWorkflowTab('trips_ratings')}
+            onClick={() => handleTabClick('trips_ratings')}
             className={`p-3 rounded-2xl text-xs font-black flex flex-col items-center justify-center gap-1 transition-all cursor-pointer col-span-2 md:col-span-1 ${
               activeWorkflowTab === 'trips_ratings' 
                 ? 'bg-purple-600 text-white shadow-md' 

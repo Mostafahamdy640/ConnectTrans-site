@@ -1466,6 +1466,16 @@ export class ConnectTransStorage {
     };
   }
 
+  public addAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): void {
+    const db = this.getDatabase();
+    db.auditLogs.unshift({
+      ...log,
+      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString()
+    });
+    this.saveDatabase(db);
+  }
+
   public exportBackupJson(): string {
     const db = this.getDatabase();
     return JSON.stringify(db, null, 2);

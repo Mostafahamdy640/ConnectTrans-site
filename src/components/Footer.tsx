@@ -1,12 +1,13 @@
 import React from 'react';
-import { Truck, ShieldCheck, Heart, MapPin, Phone, Mail } from 'lucide-react';
+import { Truck, ShieldCheck, Heart, MapPin, Phone, Mail, Lock } from 'lucide-react';
 import { PageId } from '../types';
 
 interface FooterProps {
   onNavigate?: (page: PageId) => void;
+  onOpenAdminLogin?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin }) => {
   const handleLink = (page: PageId) => {
     if (onNavigate) {
       onNavigate(page);
@@ -113,7 +114,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         {/* Bottom copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} ConnectTrans. جميع الحقوق محفوظة لخدمات النقل واللوجستيات.</p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
             <button onClick={() => handleLink('faq')} className="hover:text-slate-300 cursor-pointer">
               الشروط والأحكام
             </button>
@@ -125,6 +126,19 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <button onClick={() => handleLink('contact')} className="hover:text-slate-300 cursor-pointer">
               مركز المساعدة
             </button>
+            {onOpenAdminLogin && (
+              <>
+                <span>•</span>
+                <button 
+                  onClick={onOpenAdminLogin} 
+                  title="دخول المشرفين المصرح لهم"
+                  className="hover:text-amber-400 text-slate-500 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Lock className="w-3 h-3 text-amber-500/70" />
+                  <span>بوابة الإدارة المركزية (دخول آمن)</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
