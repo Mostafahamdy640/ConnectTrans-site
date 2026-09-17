@@ -332,7 +332,7 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: 'USR-CMP-01',
-    name: 'شركة سيراميكا كليوباترا للصناعات',
+    name: 'شركة النيل للصناعات المتطورة',
     role: 'company',
     phone: '01229876543',
     governorate: 'السويس',

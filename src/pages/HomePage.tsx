@@ -46,45 +46,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         subheadline={siteContent?.heroSubheadline}
       />
 
-      {/* Authenticated Banner (If Logged In) */}
-      {currentUser && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-3xl p-6 sm:p-8 border border-blue-900/50 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-fadeIn">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-400 shrink-0">
-                {currentUser.role === 'company' ? <Building2 className="w-7 h-7" /> :
-                 currentUser.role === 'office' ? <Briefcase className="w-7 h-7" /> :
-                 currentUser.role === 'driver' ? <Truck className="w-7 h-7" /> :
-                 <ShieldCheck className="w-7 h-7 text-amber-400" />}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg sm:text-xl font-black">{currentUser.name}</h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    حساب نشط ومصادق
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  أنت مسجل حالياً بصلاحية [
-                  {currentUser.role === 'company' ? 'الشركات والمصانع' :
-                   currentUser.role === 'office' ? 'مكاتب النقل والوساطة' :
-                   currentUser.role === 'driver' ? 'أصحاب الشاحنات والسيارات' : 'الإدارة العامة'}
-                  ]. يمكنك متابعة وإدارة عملياتك التشغيلية بالكامل.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigate(currentUser.role === 'admin' ? 'admin' : 'dashboard')}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-black rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-2 whitespace-nowrap"
-            >
-              <span>{currentUser.role === 'admin' ? 'الانتقال للوحة الإدارة' : 'الانتقال للوحة العمليات'}</span>
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 2. Three Audience Cards - Dedicated Category Portals (الفئات الثلاث) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10">
@@ -254,7 +215,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
                 <h3 className="text-lg font-black text-slate-900">منظومة التشغيل والربط الفوري الحية</h3>
-                <p className="text-xs text-slate-500">تم تسجيل دخولك كـ [{currentUser.name}] — التحكمات مصرح بها وفق فئتك</p>
+                <p className="text-xs text-slate-500">جلسة تشغيلية موثقة وآمنة — التحكمات مفعلة وفق فئة حسابك المعتمدة</p>
               </div>
               <span className="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />

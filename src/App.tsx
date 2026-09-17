@@ -33,7 +33,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     try {
       const saved = localStorage.getItem('ct_authenticated_user');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      if (parsed && (parsed.name?.includes('كليوباترا') || parsed.name?.includes('سيراميكا'))) {
+        parsed.name = 'شركة النيل للصناعات المتطورة';
+        try { localStorage.setItem('ct_authenticated_user', JSON.stringify(parsed)); } catch {}
+      }
+      return parsed;
     } catch {
       return null;
     }
