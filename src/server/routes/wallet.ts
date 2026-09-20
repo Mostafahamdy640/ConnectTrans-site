@@ -1,10 +1,12 @@
-import { Router, Response } from 'express';
+import express from 'express';
+import type { Response } from 'express';
 import { eq, desc } from 'drizzle-orm';
-import { db } from '../../db';
-import { walletTransactions, users, auditLogs, notifications } from '../../db/schema';
-import { requireAuth, AuthRequest } from '../../middleware/auth';
+import { db } from '../../db/index.ts';
+import { walletTransactions, users, auditLogs, notifications } from '../../db/schema.ts';
+import { requireAuth } from '../../middleware/auth.ts';
+import type { AuthRequest } from '../../middleware/auth.ts';
 
-const router = Router();
+const router = express.Router();
 
 // GET /api/wallet/summary - Current user wallet balance & stats
 router.get('/summary', requireAuth, async (req: AuthRequest, res: Response) => {

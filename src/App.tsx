@@ -109,6 +109,41 @@ export default function App() {
     return () => window.removeEventListener('hashchange', syncPageFromHash);
   }, [currentUser]);
 
+  // Server-side session verification via PostgreSQL /api/auth/me
+  useEffect(() => {
+    const token = localStorage.getItem('ct_auth_token');
+    if (token) {
+      fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.user) {
+            const verifiedAccount: UserAccount = {
+              id: data.user.uid,
+              name: data.user.name,
+              role: data.user.role,
+              phone: data.user.phone,
+              governorate: data.user.governorate || 'القاهرة',
+              city: data.user.city || '',
+              status: 'active',
+              verifiedDocs: data.user.verifiedDocs,
+              walletBalance: data.user.walletBalance || 0,
+              rating: data.user.rating || 5.0,
+              completedTrips: 0,
+            };
+            setCurrentUser(verifiedAccount);
+            setActiveRole(data.user.role);
+          } else {
+            localStorage.removeItem('ct_auth_token');
+            localStorage.removeItem('ct_authenticated_user');
+            setCurrentUser(null);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
   const handleOpenAuth = (mode: 'login' | 'register', role: UserRole = 'company') => {
     setAuthMode(mode);
     setAuthInitialRole(role);
@@ -148,6 +183,14 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    const token = localStorage.getItem('ct_auth_token');
+    if (token) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => {});
+    }
+
     if (currentUser) {
       ctStorage.addAuditLog({
         actorId: currentUser.id,
@@ -162,6 +205,7 @@ export default function App() {
 
     setCurrentUser(null);
     setActiveRole('company');
+    localStorage.removeItem('ct_auth_token');
     try {
       localStorage.removeItem('ct_authenticated_user');
     } catch {

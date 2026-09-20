@@ -1,17 +1,44 @@
-import { Router, Response } from 'express';
-import { eq, desc, and } from 'drizzle-orm';
-import { db } from '../../db';
+import express from 'express';
+import type { Request, Response } from 'express';
+import { eq, desc, and, or } from 'drizzle-orm';
+import { db } from '../../db/index.ts';
 import { 
   transportRequests, officeOffers, requestAcceptances, trips, 
-  tripStatusHistory, notifications, auditLogs, users 
-} from '../../db/schema';
-import { requireAuth, requireRole, AuthRequest } from '../../middleware/auth';
+  tripStatusHistory, notifications, auditLogs, users, companyInquiries 
+} from '../../db/schema.ts';
+import { requireAuth, requireRole, JWT_SECRET } from '../../middleware/auth.ts';
+import type { AuthRequest } from '../../middleware/auth.ts';
+import jwt from 'jsonwebtoken';
 
-const router = Router();
+const router = express.Router();
 
-// GET /api/requests - List all transport requests (marketplace)
+// Helper to mask phone numbers for unauthorized viewers
+function maskPhone(phone: string | null | undefined): string {
+  if (!phone) return '01*********';
+  const clean = phone.trim();
+  if (clean.length < 7) return '01*********';
+  return clean.slice(0, 3) + '*****' + clean.slice(-3);
+}
+
+// Optional Auth extractor to identify viewer if token present
+function extractOptionalUser(req: AuthRequest) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split('Bearer ')[1].trim();
+    try {
+      return jwt.verify(token, JWT_SECRET) as any;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// GET /api/requests - List all transport requests (Marketplace)
+// Requirement 17: Mask contact details until accepted
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    const viewer = extractOptionalUser(req);
     const { status, governorate } = req.query;
     
     let allRequests = await db.select().from(transportRequests).orderBy(desc(transportRequests.createdAt));
@@ -25,17 +52,32 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Attach offers count and acceptances to each request
     const requestsWithDetails = await Promise.all(
       allRequests.map(async (r) => {
         const offers = await db.select().from(officeOffers).where(eq(officeOffers.requestId, r.id));
         const acceptances = await db.select().from(requestAcceptances).where(eq(requestAcceptances.requestId, r.id));
+
+        // Determine if viewer is authorized to see unmasked shipper phone
+        const isOwner = viewer && (viewer.uid === r.creatorId || viewer.role === 'admin' || viewer.role === 'supervisor');
+        const hasAccepted = viewer && acceptances.some(a => a.acceptedById === viewer.uid);
+        const canViewShipperPhone = isOwner || hasAccepted;
+
+        const sanitizedOffers = offers.map(o => {
+          const canViewOfficePhone = viewer && (viewer.uid === o.officeId || viewer.uid === r.creatorId || viewer.role === 'admin');
+          return {
+            ...o,
+            offeredPricePerUnit: Number(o.offeredPricePerUnit),
+            officePhone: canViewOfficePhone ? o.officePhone : maskPhone(o.officePhone),
+          };
+        });
+
         return {
           ...r,
           pricePerUnit: Number(r.pricePerUnit),
           weightTons: Number(r.weightTons || 25),
-          offersCount: offers.length,
-          offers,
+          creatorPhone: canViewShipperPhone ? r.creatorPhone : maskPhone(r.creatorPhone),
+          offersCount: sanitizedOffers.length,
+          offers: sanitizedOffers,
           acceptances,
         };
       })
@@ -44,12 +86,12 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     return res.json({ requests: requestsWithDetails });
   } catch (error) {
     console.error('Fetch requests error:', error);
-    return res.status(500).json({ error: 'فشل جلب طلبات النقل' });
+    return res.status(500).json({ error: 'فشل جلب طلبات النقل من قاعدة البيانات' });
   }
 });
 
-// POST /api/requests - Create a new transport request (Company or Admin)
-router.post('/', requireAuth, requireRole(['company', 'admin']), async (req: AuthRequest, res: Response) => {
+// POST /api/requests - Create a new transport request (Company, Office, or Admin)
+router.post('/', requireAuth, requireRole(['company', 'office', 'admin', 'supervisor']), async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
     const {
@@ -62,24 +104,24 @@ router.post('/', requireAuth, requireRole(['company', 'admin']), async (req: Aut
       return res.status(400).json({ error: 'يرجى استكمال جميع بيانات طلب النقل الأساسية' });
     }
 
-    const qty = parseInt(requiredQuantity, 10);
+    const qty = parseInt(String(requiredQuantity), 10);
     if (isNaN(qty) || qty <= 0) {
       return res.status(400).json({ error: 'الكمية المطلوبة يجب أن تكون رقماً أكبر من صفر' });
     }
 
-    const price = parseFloat(pricePerUnit);
+    const price = parseFloat(String(pricePerUnit));
     if (isNaN(price) || price <= 0) {
       return res.status(400).json({ error: 'سعر النقل يجب أن يكون رقماً صحيحاً أكبر من صفر' });
     }
 
     const id = `req-${Date.now()}`;
-    const requestNumber = `REQ-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const requestNumber = `REQ-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const [newRequest] = await db.insert(transportRequests).values({
       id,
       requestNumber,
       creatorId: user.uid,
-      creatorType: user.role === 'admin' ? 'admin' : 'company',
+      creatorType: user.role === 'admin' ? 'admin' : (user.role === 'office' ? 'office' : 'company'),
       creatorName: user.name,
       creatorPhone: user.phone,
       fromGovernorate,
@@ -118,9 +160,10 @@ router.post('/', requireAuth, requireRole(['company', 'admin']), async (req: Aut
   }
 });
 
-// GET /api/requests/:id - Single request details
+// GET /api/requests/:id - Single request details with contact protection
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const viewer = extractOptionalUser(req);
     const [request] = await db.select().from(transportRequests).where(eq(transportRequests.id, req.params.id));
     if (!request) {
       return res.status(404).json({ error: 'طلب النقل غير موجود' });
@@ -129,12 +172,26 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     const offers = await db.select().from(officeOffers).where(eq(officeOffers.requestId, request.id));
     const acceptances = await db.select().from(requestAcceptances).where(eq(requestAcceptances.requestId, request.id));
 
+    const isOwner = viewer && (viewer.uid === request.creatorId || viewer.role === 'admin' || viewer.role === 'supervisor');
+    const hasAccepted = viewer && acceptances.some(a => a.acceptedById === viewer.uid);
+    const canViewShipperPhone = isOwner || hasAccepted;
+
+    const sanitizedOffers = offers.map(o => {
+      const canViewOfficePhone = viewer && (viewer.uid === o.officeId || viewer.uid === request.creatorId || viewer.role === 'admin');
+      return {
+        ...o,
+        offeredPricePerUnit: Number(o.offeredPricePerUnit),
+        officePhone: canViewOfficePhone ? o.officePhone : maskPhone(o.officePhone),
+      };
+    });
+
     return res.json({
       request: {
         ...request,
         pricePerUnit: Number(request.pricePerUnit),
         weightTons: Number(request.weightTons || 25),
-        offers,
+        creatorPhone: canViewShipperPhone ? request.creatorPhone : maskPhone(request.creatorPhone),
+        offers: sanitizedOffers,
         acceptances,
       }
     });
@@ -145,7 +202,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/requests/:id/offers - Submit office price offer
-router.post('/:id/offers', requireAuth, requireRole(['office', 'admin']), async (req: AuthRequest, res: Response) => {
+router.post('/:id/offers', requireAuth, requireRole(['office', 'admin', 'supervisor']), async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
     const requestId = req.params.id;
@@ -160,8 +217,8 @@ router.post('/:id/offers', requireAuth, requireRole(['office', 'admin']), async 
       return res.status(400).json({ error: 'عذراً، هذا الطلب مكتمل النقلات ومغلق' });
     }
 
-    const qty = parseInt(availableQuantity, 10);
-    const price = parseFloat(offeredPricePerUnit);
+    const qty = parseInt(String(availableQuantity), 10);
+    const price = parseFloat(String(offeredPricePerUnit));
 
     if (isNaN(qty) || qty <= 0 || isNaN(price) || price <= 0) {
       return res.status(400).json({ error: 'يرجى إدخال سعر وكمية شاحنات صحيحة' });
@@ -221,26 +278,26 @@ router.post('/:id/offers', requireAuth, requireRole(['office', 'admin']), async 
   }
 });
 
-// POST /api/requests/:id/accept - STRICT DATABASE TRANSACTION
-// Requirement 8: "منع قبول كميات أكبر من الكمية المطلوبة باستخدام Database Transactions"
+// POST /api/requests/:id/accept - STRICT POSTGRESQL TRANSACTION
+// Concurrency & Quota Protection: Prevent over-accepting using PostgreSQL Database Transactions
 router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
     const requestId = req.params.id;
     const { quantity, offerId, vehiclePlate, driverName, driverPhone } = req.body;
 
-    const acceptedQty = parseInt(quantity, 10) || 1;
+    const acceptedQty = parseInt(String(quantity), 10) || 1;
     if (acceptedQty <= 0) {
       return res.status(400).json({ error: 'الكمية المقبولة يجب أن تكون 1 على الأقل' });
     }
 
-    // Execute atomic transaction
+    // Execute atomic PostgreSQL transaction
     const transactionResult = await db.transaction(async (tx) => {
-      // 1. Fetch Request with row lock simulation
+      // 1. Fetch Request with lock verification
       const [reqRecord] = await tx.select().from(transportRequests).where(eq(transportRequests.id, requestId));
       
       if (!reqRecord) {
-        throw new Error('طلب النقل غير موجود');
+        throw new Error('طلب النقل غير موجود في النظام');
       }
 
       if (reqRecord.status === 'closed' || reqRecord.remainingQuantity <= 0) {
@@ -263,7 +320,11 @@ router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) 
           offerRecord = foundOffer;
           agreedUnitPrice = Number(foundOffer.offeredPricePerUnit);
 
-          // Deduct from offer if office accepted
+          if (acceptedQty > foundOffer.remainingQuantity) {
+            throw new Error(`الكمية المطلوبة تتجاوز الكمية المتبقية في عرض مكتب النقل (${foundOffer.remainingQuantity})`);
+          }
+
+          // Deduct from offer if office offer accepted
           const offerNewRemaining = Math.max(0, foundOffer.remainingQuantity - acceptedQty);
           const offerNewAccepted = foundOffer.acceptedQuantity + acceptedQty;
           await tx.update(officeOffers).set({
@@ -274,7 +335,7 @@ router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) 
         }
       }
 
-      // 2. Decrement remaining and increment accepted atomically
+      // 2. Decrement remaining and increment accepted atomically in PostgreSQL
       const newRemaining = reqRecord.remainingQuantity - acceptedQty;
       const newAccepted = reqRecord.acceptedQuantity + acceptedQty;
       const newStatus = newRemaining === 0 ? 'closed' : 'partially_accepted';
@@ -395,6 +456,67 @@ router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) 
     return res.status(400).json({ 
       error: error.message || 'فشلت عملية قبول الحمولة في قاعدة البيانات' 
     });
+  }
+});
+
+// POST /api/requests/inquiry - Company direct cooperation inquiry
+router.post('/inquiry', async (req: Request, res: Response) => {
+  try {
+    const {
+      companyName, contactPerson, phone, email, governorate, city,
+      monthlyCargoVolumeTons, truckTypesNeeded, cooperationType, notes
+    } = req.body;
+
+    if (!companyName || !phone) {
+      return res.status(400).json({ error: 'اسم الشركة ورقم الهاتف للتواصل حقول مطلوبة' });
+    }
+
+    const id = `inq-${Date.now()}`;
+    const [inquiry] = await db.insert(companyInquiries).values({
+      id,
+      companyName: companyName.trim(),
+      contactPerson: contactPerson || 'مسؤول اللوجستيات',
+      phone: phone.trim(),
+      email: email || `${phone}@company-eg.com`,
+      governorate: governorate || 'القاهرة',
+      city: city || 'المنطقة الصناعية',
+      monthlyCargoVolumeTons: String(monthlyCargoVolumeTons || 100),
+      truckTypesNeeded: Array.isArray(truckTypesNeeded) ? truckTypesNeeded.join(', ') : (truckTypesNeeded || ''),
+      cooperationType: cooperationType || 'long_term_contract',
+      notes: notes || 'طلب شراكة وتنسيق نقل مباشر',
+      status: 'pending',
+    }).returning();
+
+    await db.insert(auditLogs).values({
+      id: `log-${Date.now()}`,
+      actorId: id,
+      actorName: companyName,
+      actorRole: 'company',
+      action: 'COMPANY_DIRECT_INQUIRY',
+      entity: 'inquiry',
+      entityId: id,
+      details: `تسجيل طلب تعاون مباشر لشركة [${companyName}] - حجم ${monthlyCargoVolumeTons || 100} طن`,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'تم تسجيل طلب تعاون الشركة بنجاح والتواصل المباشر مع إدارة ConnectTrans!',
+      inquiry,
+    });
+  } catch (error) {
+    console.error('Company inquiry error:', error);
+    return res.status(500).json({ error: 'فشل حفظ طلب التعاون في قاعدة البيانات' });
+  }
+});
+
+// GET /api/requests/inquiries - List inquiries for admin & supervisors
+router.get('/inquiries/all', requireAuth, requireRole(['admin', 'supervisor']), async (req: AuthRequest, res: Response) => {
+  try {
+    const inquiries = await db.select().from(companyInquiries).orderBy(desc(companyInquiries.createdAt));
+    return res.json({ success: true, inquiries });
+  } catch (error) {
+    console.error('Fetch inquiries error:', error);
+    return res.status(500).json({ error: 'فشل جلب طلبات التعاون' });
   }
 });
 

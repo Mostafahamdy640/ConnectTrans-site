@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Database, Download, Upload, ShieldCheck, History, 
   CheckCircle2, AlertTriangle, RefreshCw, Layers, Copy, Check
@@ -11,20 +11,97 @@ export const AuditAndBackupManager: React.FC = () => {
   const [jsonInput, setJsonInput] = useState('');
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchServerLogs = async () => {
+    try {
+      const token = localStorage.getItem('ct_auth_token');
+      if (token) {
+        const res = await fetch('/api/admin/audit-logs', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.logs && Array.isArray(data.logs) && data.logs.length > 0) {
+            const currentDb = ctStorage.getDatabase();
+            currentDb.auditLogs = data.logs.map((l: any) => ({
+              id: l.id,
+              actorId: l.actorId || 'system',
+              actorName: l.actorName || 'مسؤول النظام',
+              actorRole: (l.actorRole as any) || 'admin',
+              action: l.action,
+              entity: (l.entity as any) || 'system',
+              entityId: l.entityId || '',
+              oldValue: l.oldValue,
+              newValue: l.newValue || l.details,
+              timestamp: l.timestamp || l.createdAt,
+            }));
+            ctStorage.saveDatabase(currentDb);
+            setDb({ ...currentDb });
+          }
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchServerLogs();
+  }, []);
 
   const refreshData = () => {
-    setDb(ctStorage.getDatabase());
+    ctStorage.syncWithServer().then(() => {
+      setDb(ctStorage.getDatabase());
+      fetchServerLogs();
+    });
   };
 
-  const handleCreateBackup = () => {
+  const handleCreateBackup = async () => {
+    setIsLoading(true);
+    const token = localStorage.getItem('ct_auth_token');
+    if (token) {
+      try {
+        const res = await fetch('/api/admin/backup', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const backupJson = JSON.stringify(data.backup || data, null, 2);
+          setBackupNotice(`تم إنشاء نسخة احتياطية كاملة من قاعدة بيانات PostgreSQL بنجاح (${backupJson.length} بايت) وتم توثيقها.`);
+          refreshData();
+          setTimeout(() => setBackupNotice(null), 4500);
+          setIsLoading(false);
+          return;
+        }
+      } catch {}
+    }
+
     const backup = ctStorage.createLocalBackup();
     refreshData();
-    setBackupNotice(`تم إنشاء نسخة احتياطية محلية فورية بنجاح (${backup.sizeBytes} بايت) وتم تدوين العملية بالسجل.`);
+    setBackupNotice(`تم إنشاء نسخة احتياطية فورية بنجاح (${backup.sizeBytes} بايت) وتم تدوين العملية بالسجل.`);
     setTimeout(() => setBackupNotice(null), 4500);
+    setIsLoading(false);
   };
 
-  const handleDownloadBackupFile = () => {
-    const json = ctStorage.exportBackupJson();
+  const handleDownloadBackupFile = async () => {
+    const token = localStorage.getItem('ct_auth_token');
+    let json = '';
+
+    if (token) {
+      try {
+        const res = await fetch('/api/admin/backup', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          json = JSON.stringify(data.backup || data, null, 2);
+        }
+      } catch {}
+    }
+
+    if (!json) {
+      json = ctStorage.exportBackupJson();
+    }
+
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -34,23 +111,76 @@ export const AuditAndBackupManager: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleRestoreJson = (e: React.FormEvent) => {
+  const handleRestoreJson = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jsonInput.trim()) return;
-    const ok = ctStorage.restoreBackupJson(jsonInput);
-    if (ok) {
-      refreshData();
-      setShowRestoreModal(false);
-      setJsonInput('');
-      setBackupNotice('تمت استعادة قاعدة البيانات بنجاح تام وتحديث كافة السجلات!');
-    } else {
-      setBackupNotice('خطأ: تنسيق ملف النسخة الاحتياطية غير متوافق');
+
+    setIsLoading(true);
+    const token = localStorage.getItem('ct_auth_token');
+
+    try {
+      const parsed = JSON.parse(jsonInput);
+
+      if (token) {
+        const res = await fetch('/api/admin/restore', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ backup: parsed }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          ctStorage.restoreBackupJson(jsonInput);
+          refreshData();
+          setShowRestoreModal(false);
+          setJsonInput('');
+          setBackupNotice(data.message || 'تمت استعادة وتدقيق قاعدة البيانات بنجاح تام وفق معايير PostgreSQL!');
+          setTimeout(() => setBackupNotice(null), 5000);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const ok = ctStorage.restoreBackupJson(jsonInput);
+      if (ok) {
+        refreshData();
+        setShowRestoreModal(false);
+        setJsonInput('');
+        setBackupNotice('تمت استعادة قاعدة البيانات بنجاح تام وتحديث كافة السجلات!');
+      } else {
+        setBackupNotice('خطأ: تنسيق ملف النسخة الاحتياطية غير متوافق');
+      }
+    } catch {
+      setBackupNotice('خطأ: ملف JSON غير صالح');
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setBackupNotice(null), 5000);
     }
-    setTimeout(() => setBackupNotice(null), 5000);
   };
 
-  const handleCopyJson = () => {
-    const json = ctStorage.exportBackupJson();
+  const handleCopyJson = async () => {
+    const token = localStorage.getItem('ct_auth_token');
+    let json = '';
+
+    if (token) {
+      try {
+        const res = await fetch('/api/admin/backup', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          json = JSON.stringify(data.backup || data, null, 2);
+        }
+      } catch {}
+    }
+
+    if (!json) {
+      json = ctStorage.exportBackupJson();
+    }
+
     navigator.clipboard.writeText(json);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
@@ -71,20 +201,21 @@ export const AuditAndBackupManager: React.FC = () => {
           <div>
             <h3 className="text-base font-black text-white flex items-center gap-2">
               <Database className="w-5 h-5 text-emerald-400" />
-              <span>إدارة الحفظ الدائم والنسخ الاحتياطي (Backup & Restore)</span>
+              <span>إدارة الحفظ الدائم والنسخ الاحتياطي (Backup & Restore - PostgreSQL)</span>
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              يتم حفظ كافة المعاملات والشركات والرحلات محلياً بشكل دائم، مع إمكانية التصدير والاسترجاع في أي وقت.
+              يتم حفظ كافة المعاملات والشركات والرحلات في قاعدة بيانات PostgreSQL، مع إمكانية التصدير والاسترجاع المحمي في أي وقت.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleCreateBackup}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5"
+              disabled={isLoading}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
             >
               <Database className="w-4 h-4" />
-              <span>أخذ نسخة محلية الآن</span>
+              <span>أخذ نسخة الآن</span>
             </button>
             <button
               onClick={handleDownloadBackupFile}
@@ -142,7 +273,7 @@ export const AuditAndBackupManager: React.FC = () => {
             <History className="w-5 h-5 text-amber-400" />
             <span>سجل العمليات والرقابة الكاملة (Audit Log)</span>
           </h3>
-          <button onClick={refreshData} className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg">
+          <button onClick={refreshData} className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg cursor-pointer">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -200,7 +331,7 @@ export const AuditAndBackupManager: React.FC = () => {
                 rows={8}
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
-                placeholder='{"version": 1, "companies": [...]}'
+                placeholder='{"version": "4.0.0-production", "data": {...}}'
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-emerald-400 font-mono text-[11px] focus:outline-hidden focus:border-blue-400"
                 required
               />
@@ -208,9 +339,10 @@ export const AuditAndBackupManager: React.FC = () => {
               <div className="flex gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer"
+                  disabled={isLoading}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl cursor-pointer disabled:opacity-50"
                 >
-                  استعادة وتطبيق الآن
+                  {isLoading ? 'جاري الاستعادة...' : 'استعادة وتطبيق الآن'}
                 </button>
                 <button
                   type="button"

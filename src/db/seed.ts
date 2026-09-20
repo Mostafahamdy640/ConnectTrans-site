@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs';
-import { db } from './index';
+import { db } from './index.ts';
 import { 
   users, companies, offices, vehicleOwners, vehicles, drivers,
   transportRequests, officeOffers, trips, tripStatusHistory, ratings,
   commissionProfiles, auditLogs
-} from './schema';
-import { INITIAL_COMMISSION_PROFILES } from '../data/egyptLocations';
+} from './schema.ts';
+import { INITIAL_COMMISSION_PROFILES } from '../data/egyptLocations.ts';
 
 export async function seedDatabase() {
   console.log('🌱 Starting ConnectTrans database seed...');

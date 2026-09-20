@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { INITIAL_COMMISSION_PROFILES } from '../data/egyptLocations';
+import { INITIAL_COMMISSION_PROFILES } from '../data/egyptLocations.ts';
 
 // Table names mapping
 export type TableName = 

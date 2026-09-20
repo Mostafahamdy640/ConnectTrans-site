@@ -21,6 +21,7 @@ export const users = pgTable('users', {
   commercialReg: text('commercial_reg'),
   nationalId: text('national_id'),
   truckType: text('truck_type'),
+  permissions: text('permissions').default('[]'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -275,3 +276,31 @@ export const commissionProfiles = pgTable('commission_profiles', {
   tiersJson: text('tiers_json').notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// 18. Supervisor Permissions table (Role-Based Access Control)
+export const supervisorPermissions = pgTable('supervisor_permissions', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().unique(),
+  permissionsJson: text('permissions_json').notNull().default('[]'),
+  assignedBy: text('assigned_by'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// 19. Company Cooperation Inquiries table
+export const companyInquiries = pgTable('company_inquiries', {
+  id: text('id').primaryKey(),
+  companyName: text('company_name').notNull(),
+  contactPerson: text('contact_person'),
+  phone: text('phone').notNull(),
+  email: text('email'),
+  governorate: text('governorate').notNull(),
+  city: text('city').notNull(),
+  monthlyCargoVolumeTons: numeric('monthly_cargo_volume_tons', { precision: 10, scale: 2 }).default('0.00'),
+  truckTypesNeeded: text('truck_types_needed'),
+  cooperationType: text('cooperation_type'),
+  notes: text('notes'),
+  status: text('status').default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+

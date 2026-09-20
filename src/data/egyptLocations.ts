@@ -1,4 +1,4 @@
-import { CommissionProfile, UserAccount, SitePageContent } from '../types';
+import type { CommissionProfile, UserAccount, SitePageContent } from '../types.ts';
 
 // Governorates and Cities/Centers of Egypt with Sample Villages & Industrial Zones
 export interface EgyptLocation {

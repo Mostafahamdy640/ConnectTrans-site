@@ -660,6 +660,110 @@ export class ConnectTransStorage {
     }
   }
 
+  // Synchronize state with PostgreSQL backend
+  public async syncWithServer(): Promise<ConnectTransDatabase> {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ct_auth_token') : null;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch('/api/requests', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.requests && Array.isArray(data.requests)) {
+          const db = this.getDatabase();
+          // Merge server requests into db
+          const serverReqs: TransportRequest[] = data.requests.map((r: any) => ({
+            id: r.id,
+            requestNumber: r.requestNumber,
+            creatorId: r.creatorId,
+            creatorType: r.creatorType || 'company',
+            creatorName: r.creatorName,
+            creatorGovernorate: r.fromGovernorate,
+            creatorCity: r.fromCity,
+            requestType: 'marketplace',
+            fromGovernorate: r.fromGovernorate,
+            fromCity: r.fromCity,
+            toGovernorate: r.toGovernorate,
+            toCity: r.toCity,
+            pickupLocation: r.pickupLocation,
+            dropoffLocation: r.dropoffLocation,
+            truckType: r.truckType,
+            cargoType: r.cargoType,
+            weightTons: Number(r.weightTons || 25),
+            pricePerUnit: Number(r.pricePerUnit),
+            requiredQuantity: r.requiredQuantity,
+            remainingQuantity: r.remainingQuantity,
+            acceptedQuantity: r.acceptedQuantity,
+            status: r.status,
+            notes: r.notes,
+            createdAt: r.createdAt,
+            contacts: {
+              phone: r.creatorPhone,
+              email: `${r.creatorPhone}@connecttrans.eg`,
+              whatsapp: r.creatorPhone,
+            },
+            offersCount: r.offersCount || (r.offers ? r.offers.length : 0),
+          }));
+
+          if (serverReqs.length > 0) {
+            db.requests = serverReqs;
+          }
+          this.saveDatabase(db);
+        }
+      }
+
+      // Sync trips if token present
+      if (token) {
+        const tripsRes = await fetch('/api/trips', { headers });
+        if (tripsRes.ok) {
+          const tripsData = await tripsRes.json();
+          if (tripsData.trips && Array.isArray(tripsData.trips)) {
+            const db = this.getDatabase();
+            db.trips = tripsData.trips.map((t: any) => ({
+              id: t.id,
+              tripNumber: t.tripNumber,
+              requestId: t.requestId,
+              acceptanceId: t.acceptanceId || 'acc-1',
+              shipperId: t.shipperId,
+              shipperName: t.shipperName,
+              shipperRole: 'company',
+              transporterId: t.transporterId,
+              transporterName: t.transporterName,
+              transporterRole: 'office',
+              driverId: t.driverId,
+              driverName: t.driverName || 'سائق معتمد',
+              driverPhone: t.driverPhone,
+              vehiclePlate: t.vehiclePlate || 'لوحات نقل',
+              fromLocation: t.fromLocation,
+              toLocation: t.toLocation,
+              cargoType: t.cargoType,
+              quantity: 1,
+              status: t.status,
+              statusHistory: [
+                { status: t.status, timestamp: t.createdAt || new Date().toISOString() }
+              ],
+              progressPercent: t.progressPercent || 20,
+              price: Number(t.price),
+              commission: Number(t.commission || 0),
+              createdAt: t.createdAt || new Date().toISOString(),
+            }));
+            this.saveDatabase(db);
+          }
+        }
+      }
+
+      return this.getDatabase();
+    } catch (err) {
+      console.warn('Background PostgreSQL sync warning:', err);
+      return this.getDatabase();
+    }
+  }
+
   // 1. Submit Company Direct Cooperation Inquiry / Registration
   public submitCompanyInquiry(inquiryData: Omit<CompanyDirectInquiry, 'id' | 'createdAt' | 'status'>): CompanyDirectInquiry {
     const db = this.getDatabase();
@@ -672,6 +776,15 @@ export class ConnectTransStorage {
     };
 
     db.companyInquiries.unshift(inquiry);
+
+    // Sync directly to PostgreSQL
+    try {
+      fetch('/api/requests/inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inquiryData),
+      }).catch(() => {});
+    } catch {}
 
     // Also ensure company exists or is created in companies list if not present
     const existingComp = db.companies.find(c => c.companyName === inquiryData.companyName || c.contacts.phone === inquiryData.phone);
@@ -888,6 +1001,27 @@ export class ConnectTransStorage {
     });
 
     this.saveDatabase(db);
+
+    // Sync offer to PostgreSQL backend
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ct_auth_token') : null;
+      if (token) {
+        fetch(`/api/requests/${req.id}/offers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            offeredPricePerUnit: params.offeredPricePerUnit,
+            availableQuantity: params.availableQuantity,
+            truckTypesAvailable: params.truckTypesAvailable,
+            notes: params.notes,
+          })
+        }).catch(() => {});
+      }
+    } catch {}
+
     return { 
       success: true, 
       message: `تم تقديم عرض مكتب النقل بنجاح على الطلب ${req.requestNumber}، وسيظهر فوراً لأصحاب السيارات للاختيار والقبول.`, 
@@ -1063,6 +1197,28 @@ export class ConnectTransStorage {
     });
 
     this.saveDatabase(db);
+
+    // Sync acceptance to PostgreSQL backend
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ct_auth_token') : null;
+      if (token) {
+        fetch(`/api/requests/${request.id}/accept`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            offerId: offer.id,
+            quantity: actualAccepted,
+            vehiclePlate: params.vehiclePlate,
+            driverName: params.driverName,
+            driverPhone: params.driverPhone,
+          })
+        }).catch(() => {});
+      }
+    } catch {}
+
     return {
       success: true,
       message: `تم قبول العرض بنجاح! تم إنشاء الرحلة ${tripNumber}، وتحديث الكمية المتبقية، وفتح بيانات التواصل لكافة الأطراف.`,
@@ -1211,6 +1367,26 @@ export class ConnectTransStorage {
     });
 
     this.saveDatabase(db);
+
+    // Sync direct acceptance to PostgreSQL backend
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ct_auth_token') : null;
+      if (token) {
+        fetch(`/api/requests/${request.id}/accept`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            quantity: params.acceptedQuantity,
+            driverName: params.acceptedByUserName,
+            driverPhone: params.acceptorContacts.phone,
+          })
+        }).catch(() => {});
+      }
+    } catch {}
+
     return { 
       success: true, 
       message: `تم قبول ${params.acceptedQuantity} حمولة بنجاح، والكمية المتبقية الآن: ${remainingAfter}. تم تحرير بيانات الاتصال وإصدار أمر الرحلة ${tripNumber}.`,
@@ -1250,6 +1426,35 @@ export class ConnectTransStorage {
     });
 
     this.saveDatabase(db);
+
+    // Sync new request to PostgreSQL backend
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ct_auth_token') : null;
+      if (token) {
+        fetch('/api/requests', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            fromGovernorate: reqData.fromGovernorate,
+            fromCity: reqData.fromCity,
+            toGovernorate: reqData.toGovernorate,
+            toCity: reqData.toCity,
+            pickupLocation: reqData.pickupLocation,
+            dropoffLocation: reqData.dropoffLocation,
+            truckType: reqData.truckType,
+            cargoType: reqData.cargoType,
+            weightTons: reqData.weightTons,
+            pricePerUnit: reqData.pricePerUnit,
+            requiredQuantity: reqData.requiredQuantity,
+            notes: reqData.notes,
+          })
+        }).catch(() => {});
+      }
+    } catch {}
+
     return newRequest;
   }
 
@@ -1290,6 +1495,22 @@ export class ConnectTransStorage {
     });
 
     this.saveDatabase(db);
+
+    // Sync trip status to PostgreSQL backend
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ct_auth_token') : null;
+      if (token) {
+        fetch(`/api/trips/${trip.id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status, note })
+        }).catch(() => {});
+      }
+    } catch {}
+
     return true;
   }
 
@@ -1352,6 +1573,26 @@ export class ConnectTransStorage {
     });
 
     this.saveDatabase(db);
+
+    // Sync rating to PostgreSQL backend
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ct_auth_token') : null;
+      if (token) {
+        fetch('/api/ratings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            tripId: trip.id,
+            rating: params.rating,
+            comment: params.comment,
+          })
+        }).catch(() => {});
+      }
+    } catch {}
+
     return { success: true, message: 'شكراً لك، تم تسجيل التقييم بنجاح' };
   }
 

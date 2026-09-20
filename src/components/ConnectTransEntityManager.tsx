@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, Briefcase, Truck, Users, Clock, ShieldCheck, 
   CheckCircle2, XCircle, AlertCircle, Eye, RefreshCw, FileText, 
@@ -13,16 +13,40 @@ export const ConnectTransEntityManager: React.FC = () => {
   const [search, setSearch] = useState('');
   const [actionAlert, setActionAlert] = useState<string | null>(null);
 
+  useEffect(() => {
+    ctStorage.syncWithServer().then((synced) => {
+      setDb({ ...synced });
+    });
+  }, []);
+
   const refreshData = () => {
-    setDb(ctStorage.getDatabase());
+    ctStorage.syncWithServer().then((synced) => {
+      setDb({ ...synced });
+    });
   };
 
-  const handleStatusChange = (
+  const handleStatusChange = async (
     entityType: 'company' | 'office' | 'vehicle_owner' | 'driver' | 'vehicle', 
     id: string, 
     newStatus: AccountStatus
   ) => {
     ctStorage.updateAccountStatus(entityType, id, newStatus, 'Super Admin');
+    
+    // Also patch PostgreSQL if token exists
+    const token = localStorage.getItem('ct_auth_token');
+    if (token) {
+      try {
+        await fetch(`/api/admin/users/${id}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+      } catch {}
+    }
+
     refreshData();
     setActionAlert(`تم تحديث الحالة بنجاح إلى: ${newStatus}`);
     setTimeout(() => setActionAlert(null), 3500);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Users, Percent, Edit3, Settings, 
   CheckCircle2, XCircle, AlertCircle, Plus, Trash2, 
@@ -48,6 +48,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<UserAccount | null>(null);
+
+  // Sync users from PostgreSQL backend if admin is authenticated
+  useEffect(() => {
+    const token = localStorage.getItem('ct_auth_token');
+    if (token) {
+      fetch('/api/admin/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.users && Array.isArray(data.users)) {
+          const mapped: UserAccount[] = data.users.map((u: any) => ({
+            id: u.uid || u.id,
+            name: u.name,
+            email: u.email,
+            phone: u.phone || '',
+            role: u.role,
+            governorate: u.governorate || 'القاهرة',
+            city: u.city || '',
+            rating: u.rating || 5,
+            reviewsCount: 0,
+            verifiedDocs: u.verifiedDocs ?? (u.status === 'approved' || u.status === 'active'),
+            status: u.status === 'approved' ? 'active' : u.status,
+            createdAt: u.createdAt || new Date().toISOString(),
+          }));
+          setUserList(mapped);
+          onUpdateUsers(mapped);
+        }
+      })
+      .catch(() => {});
+    }
+  }, []);
 
   // Site CMS state
   const [cmsContent, setCmsContent] = useState<SitePageContent>(siteContent);
@@ -143,8 +175,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Handler: Update user status or verification
   const handleToggleUserVerification = (userId: string) => {
+    let targetVerified = false;
     const updated = userList.map(u => {
       if (u.id === userId) {
+        targetVerified = !u.verifiedDocs;
         return { 
           ...u, 
           verifiedDocs: !u.verifiedDocs,
@@ -155,6 +189,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
     setUserList(updated);
     onUpdateUsers(updated);
+
+    const token = localStorage.getItem('ct_auth_token');
+    if (token) {
+      fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ verifiedDocs: targetVerified })
+      }).catch(() => {});
+    }
   };
 
   const handleUpdateUserStatus = (userId: string, newStatus: 'active' | 'pending_verification' | 'suspended') => {
@@ -166,6 +212,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
     setUserList(updated);
     onUpdateUsers(updated);
+
+    const token = localStorage.getItem('ct_auth_token');
+    if (token) {
+      fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      }).catch(() => {});
+    }
   };
 
   const handleSaveUserEdit = (e: React.FormEvent) => {

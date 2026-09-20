@@ -1,14 +1,16 @@
-import { Router, Response } from 'express';
-import { eq, desc, or } from 'drizzle-orm';
-import { db } from '../../db';
+import express from 'express';
+import type { Response } from 'express';
+import { eq, desc, or, and } from 'drizzle-orm';
+import { db } from '../../db/index.ts';
 import { 
   trips, tripStatusHistory, notifications, auditLogs, 
   walletTransactions, users, commissionProfiles 
-} from '../../db/schema';
-import { requireAuth, AuthRequest } from '../../middleware/auth';
-import { calculateTripCommission, DEFAULT_COMMISSION_PROFILES } from '../../data/egyptLocations';
+} from '../../db/schema.ts';
+import { requireAuth } from '../../middleware/auth.ts';
+import type { AuthRequest } from '../../middleware/auth.ts';
+import { calculateTripCommission, DEFAULT_COMMISSION_PROFILES } from '../../data/egyptLocations.ts';
 
-const router = Router();
+const router = express.Router();
 
 // GET /api/trips - List trips for current user or all for admin
 router.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
@@ -17,25 +19,20 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
     const { status } = req.query;
 
     let userTrips = [];
-    try {
-      if (user.role === 'admin') {
-        userTrips = await db.select().from(trips).orderBy(desc(trips.createdAt));
-      } else if (user.role === 'company') {
-        userTrips = await db.select().from(trips).where(eq(trips.shipperId, user.uid)).orderBy(desc(trips.createdAt));
-      } else if (user.role === 'office') {
-        userTrips = await db.select().from(trips).where(eq(trips.transporterId, user.uid)).orderBy(desc(trips.createdAt));
-      } else if (user.role === 'driver') {
-        userTrips = await db.select().from(trips).where(
-          or(eq(trips.driverId, user.uid), eq(trips.transporterId, user.uid))
-        ).orderBy(desc(trips.createdAt));
-      } else {
-        userTrips = await db.select().from(trips).where(
-          or(eq(trips.shipperId, user.uid), eq(trips.transporterId, user.uid))
-        ).orderBy(desc(trips.createdAt));
-      }
-    } catch (e) {
-      console.warn('DB select failed, returning empty list:', e);
-      userTrips = [];
+    if (user.role === 'admin' || user.role === 'supervisor') {
+      userTrips = await db.select().from(trips).orderBy(desc(trips.createdAt));
+    } else if (user.role === 'company') {
+      userTrips = await db.select().from(trips).where(eq(trips.shipperId, user.uid)).orderBy(desc(trips.createdAt));
+    } else if (user.role === 'office') {
+      userTrips = await db.select().from(trips).where(eq(trips.transporterId, user.uid)).orderBy(desc(trips.createdAt));
+    } else if (user.role === 'driver') {
+      userTrips = await db.select().from(trips).where(
+        or(eq(trips.driverId, user.uid), eq(trips.transporterId, user.uid))
+      ).orderBy(desc(trips.createdAt));
+    } else {
+      userTrips = await db.select().from(trips).where(
+        or(eq(trips.shipperId, user.uid), eq(trips.transporterId, user.uid))
+      ).orderBy(desc(trips.createdAt));
     }
 
     if (status && typeof status === 'string' && status !== 'all') {
@@ -59,15 +56,28 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// GET /api/trips/:id - Single trip with history
+// GET /api/trips/:id - Single trip with IDOR ownership validation
 router.get('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user!;
     const [trip] = await db.select().from(trips).where(eq(trips.id, req.params.id));
     if (!trip) {
       return res.status(404).json({ error: 'الرحلة غير موجودة' });
     }
 
-    const history = await db.select().from(tripStatusHistory).where(eq(tripStatusHistory.tripId, trip.id));
+    // IDOR Check: Requester must be admin, supervisor, shipper, transporter, or driver
+    const isAuthorized = 
+      user.role === 'admin' || 
+      user.role === 'supervisor' ||
+      user.uid === trip.shipperId || 
+      user.uid === trip.transporterId || 
+      user.uid === trip.driverId;
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'غير مصرح: ليس لديك إذن للاطلاع على تفاصيل هذه الرحلة' });
+    }
+
+    const history = await db.select().from(tripStatusHistory).where(eq(tripStatusHistory.tripId, trip.id)).orderBy(desc(tripStatusHistory.timestamp));
 
     return res.json({
       success: true,
@@ -76,8 +86,8 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
         price: Number(trip.price),
         commission: Number(trip.commission || 0),
         weightTons: Number(trip.weightTons || 25),
-        latitude: trip.latitude ? Number(trip.latitude) : null,
-        longitude: trip.longitude ? Number(trip.longitude) : null,
+        latitude: tNumber(trip.latitude),
+        longitude: tNumber(trip.longitude),
         history,
       }
     });
@@ -87,7 +97,13 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// PATCH /api/trips/:id/status - Update trip status
+function tNumber(val: any): number | null {
+  if (val === null || val === undefined) return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
+}
+
+// PATCH /api/trips/:id/status - Update trip status with validation
 router.patch('/:id/status', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
@@ -104,8 +120,15 @@ router.patch('/:id/status', requireAuth, async (req: AuthRequest, res: Response)
       return res.status(404).json({ error: 'الرحلة غير موجودة' });
     }
 
-    // Role check: Only assigned transporter, driver, shipper or admin can update status
-    if (user.role !== 'admin' && user.uid !== trip.transporterId && user.uid !== trip.driverId && user.uid !== trip.shipperId) {
+    // Role & Ownership check
+    const isParticipant = 
+      user.role === 'admin' || 
+      user.role === 'supervisor' ||
+      user.uid === trip.transporterId || 
+      user.uid === trip.driverId || 
+      user.uid === trip.shipperId;
+
+    if (!isParticipant) {
       return res.status(403).json({ error: 'غير مصرح بتعديل حالة هذه الرحلة' });
     }
 
@@ -123,9 +146,38 @@ router.patch('/:id/status', requireAuth, async (req: AuthRequest, res: Response)
     if (status === 'in_progress' && !trip.startedAt) updateData.startedAt = new Date();
     if (status === 'completed' && !trip.completedAt) updateData.completedAt = new Date();
 
+    // Commission settlement on completion
+    if (status === 'completed' && Number(trip.commission || 0) === 0) {
+      const tripPrice = Number(trip.price || 0);
+      const [activeProf] = await db.select().from(commissionProfiles).where(eq(commissionProfiles.active, true)).limit(1);
+      const profile = activeProf ? {
+        id: activeProf.id,
+        name: activeProf.name,
+        description: activeProf.description,
+        active: true,
+        multiplier: Number(activeProf.multiplier || 1),
+        tiers: JSON.parse(activeProf.tiersJson || '[]'),
+      } : DEFAULT_COMMISSION_PROFILES[0];
+
+      const commCalc = calculateTripCommission(tripPrice, profile);
+      updateData.commission = String(commCalc.totalCommission);
+
+      // Financial ledger entries in walletTransactions
+      const wtxId = `wtx-${Date.now()}`;
+      await db.insert(walletTransactions).values({
+        id: wtxId,
+        userId: trip.transporterId,
+        tripId: trip.id,
+        type: 'commission_fee',
+        amount: String(commCalc.totalCommission),
+        description: `عمولة المنصة للرحلة #${trip.tripNumber}`,
+        status: 'completed',
+      });
+    }
+
     const [updatedTrip] = await db.update(trips).set(updateData).where(eq(trips.id, tripId)).returning();
 
-    // Log history
+    // Log status history in PostgreSQL
     await db.insert(tripStatusHistory).values({
       tripId,
       status,
@@ -134,50 +186,28 @@ router.patch('/:id/status', requireAuth, async (req: AuthRequest, res: Response)
       actorName: user.name,
     });
 
-    // Notify other party
+    // Notify participants
     const targetUserId = user.uid === trip.shipperId ? trip.transporterId : trip.shipperId;
     await db.insert(notifications).values({
       id: `notif-${Date.now()}`,
       userId: targetUserId,
-      title: `تحديث الرحلة #${trip.tripNumber}`,
-      message: `تم تحديث حالة الرحلة إلى: ${status} بواسطة ${user.name}`,
+      title: `تحديث مسار الرحلة #${trip.tripNumber}`,
+      message: `تم تحديث حالة الرحلة إلى [${status}] بواسطة ${user.name}`,
       type: 'trip',
       link: `/trips/${tripId}`,
     });
 
-    // If completed, trigger settlement
-    if (status === 'completed') {
-      const tripPrice = Number(trip.price);
-      const profile = DEFAULT_COMMISSION_PROFILES[0];
-      const commCalc = calculateTripCommission(tripPrice, profile);
-      const calcCommission = commCalc.totalCommission;
-      const netTransporterAmount = tripPrice - calcCommission;
-
-      // Update commission on trip
-      await db.update(trips).set({ commission: String(calcCommission) }).where(eq(trips.id, tripId));
-
-      // Wallet credit for transporter
-      await db.insert(walletTransactions).values([
-        {
-          id: `wtx-${Date.now()}-1`,
-          userId: trip.transporterId,
-          tripId: trip.id,
-          type: 'credit',
-          amount: String(netTransporterAmount),
-          description: `مستحقات الرحلة #${trip.tripNumber} (بعد خصم العمولة ${calcCommission} ج.م)`,
-          status: 'completed',
-        },
-        {
-          id: `wtx-${Date.now()}-2`,
-          userId: 'USR-ADM-01',
-          tripId: trip.id,
-          type: 'commission_fee',
-          amount: String(calcCommission),
-          description: `عمولة المنصة من الرحلة #${trip.tripNumber}`,
-          status: 'completed',
-        }
-      ]);
-    }
+    // Audit log
+    await db.insert(auditLogs).values({
+      id: `log-${Date.now()}`,
+      actorId: user.uid,
+      actorName: user.name,
+      actorRole: user.role,
+      action: status === 'completed' ? 'COMPLETE_TRIP' : 'UPDATE_TRIP',
+      entity: 'trip',
+      entityId: tripId,
+      details: `تحديث حالة الرحلة #${trip.tripNumber} إلى ${status}`,
+    });
 
     return res.json({ success: true, trip: updatedTrip });
   } catch (error) {
@@ -191,36 +221,32 @@ router.patch('/:id/location', requireAuth, async (req: AuthRequest, res: Respons
   try {
     const user = req.user!;
     const tripId = req.params.id;
-    const { latitude, longitude, currentLocation, progressPercent } = req.body;
+    const { latitude, longitude, locationName } = req.body;
 
     const [trip] = await db.select().from(trips).where(eq(trips.id, tripId));
     if (!trip) {
       return res.status(404).json({ error: 'الرحلة غير موجودة' });
     }
 
-    if (user.role !== 'admin' && user.uid !== trip.transporterId && user.uid !== trip.driverId) {
-      return res.status(403).json({ error: 'فقط السائق أو الناقل المسؤول يمكنه إرسال إحداثيات GPS الحية' });
+    const isAuthorized = 
+      user.role === 'admin' || 
+      user.role === 'supervisor' ||
+      user.uid === trip.transporterId || 
+      user.uid === trip.driverId;
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'غير مصرح بتحديث إحداثيات موقع هذه الشاحنة' });
     }
 
     const [updated] = await db.update(trips).set({
-      latitude: latitude ? String(latitude) : trip.latitude,
-      longitude: longitude ? String(longitude) : trip.longitude,
-      currentLocation: currentLocation || trip.currentLocation,
-      progressPercent: progressPercent !== undefined ? progressPercent : trip.progressPercent,
+      latitude: String(latitude),
+      longitude: String(longitude),
+      currentLocation: locationName || trip.currentLocation,
     }).where(eq(trips.id, tripId)).returning();
 
-    return res.json({
-      success: true,
-      location: {
-        tripId,
-        latitude: Number(updated.latitude),
-        longitude: Number(updated.longitude),
-        currentLocation: updated.currentLocation,
-        progressPercent: updated.progressPercent,
-      }
-    });
+    return res.json({ success: true, trip: updated });
   } catch (error) {
-    console.error('Update GPS location error:', error);
+    console.error('Update trip GPS error:', error);
     return res.status(500).json({ error: 'فشل تحديث موقع الرحلة' });
   }
 });

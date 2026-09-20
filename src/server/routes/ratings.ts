@@ -1,18 +1,21 @@
-import { Router, Response } from 'express';
-import { eq, desc } from 'drizzle-orm';
-import { db } from '../../db';
-import { ratings, trips, users, auditLogs, notifications } from '../../db/schema';
-import { requireAuth, AuthRequest } from '../../middleware/auth';
+import express from 'express';
+import type { Response } from 'express';
+import { eq, desc, and } from 'drizzle-orm';
+import { db } from '../../db/index.ts';
+import { ratings, trips, users, auditLogs, notifications } from '../../db/schema.ts';
+import { requireAuth } from '../../middleware/auth.ts';
+import type { AuthRequest } from '../../middleware/auth.ts';
 
-const router = Router();
+const router = express.Router();
 
 // POST /api/ratings - Submit rating after trip completion
+// Requirement 18: Prevent rating before completion, prevent duplicates, link to trip, recalculate average
 router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
     const { tripId, rating, comment } = req.body;
 
-    const starCount = parseInt(rating, 10);
+    const starCount = parseInt(String(rating), 10);
     if (isNaN(starCount) || starCount < 1 || starCount > 5) {
       return res.status(400).json({ error: 'التقييم يجب أن يكون بين 1 إلى 5 نجوم' });
     }
@@ -22,8 +25,29 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'الرحلة غير موجودة' });
     }
 
-    // Determine target user (if current is shipper -> target is transporter; if transporter -> target is shipper)
+    // 1. Prevent rating before completion
+    if (trip.status !== 'completed' && trip.status !== 'delivered') {
+      return res.status(400).json({ error: 'لا يمكن إضافة تقييم إلا بعد اكتمال الرحلة وتسليم البضاعة' });
+    }
+
+    // 2. Ownership / Participant verification
     const isShipper = user.uid === trip.shipperId;
+    const isTransporter = user.uid === trip.transporterId;
+    const isDriver = user.uid === trip.driverId;
+
+    if (!isShipper && !isTransporter && !isDriver && user.role !== 'admin') {
+      return res.status(403).json({ error: 'غير مصرح: التقييم متاح لأطراف الرحلة المعتمدين فقط' });
+    }
+
+    // 3. Prevent duplicate ratings
+    const existing = await db.select().from(ratings).where(
+      and(eq(ratings.tripId, trip.id), eq(ratings.fromUserId, user.uid))
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'لقد قمت بتقييم هذه الرحلة مسبقاً ولا يمكن تكرار التقييم' });
+    }
+
+    // Determine recipient
     const toUserId = isShipper ? trip.transporterId : trip.shipperId;
     const toUserName = isShipper ? trip.transporterName : trip.shipperName;
     const toUserRole = isShipper ? 'office' : 'company';
@@ -41,22 +65,35 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
       toUserName,
       toUserRole,
       rating: starCount,
-      comment: comment || 'خدمة نقل ممتازة والتزام تام بالمواعيد',
+      comment: comment || 'خدمة نقل متميزة والتزام تام بالمواعيد وسلامة الحمولات',
     }).returning();
 
-    // Recalculate recipient user rating
+    // 4. Recalculate recipient user's average rating in PostgreSQL
     const allUserRatings = await db.select().from(ratings).where(eq(ratings.toUserId, toUserId));
-    const avgScore = allUserRatings.reduce((acc, r) => acc + r.rating, 0) / (allUserRatings.length || 1);
+    const totalStars = allUserRatings.reduce((acc, r) => acc + r.rating, 0);
+    const avgScore = totalStars / (allUserRatings.length || 1);
     await db.update(users).set({ rating: avgScore.toFixed(2) }).where(eq(users.uid, toUserId));
 
-    // Notify recipient
+    // 5. Notify recipient in PostgreSQL
     await db.insert(notifications).values({
       id: `notif-${Date.now()}`,
       userId: toUserId,
-      title: 'حصلت على تقييم جديد!',
-      message: `قام ${user.name} بتقييمك ${starCount} من 5 نجوم للرحلة #${trip.tripNumber}`,
+      title: 'حصلت على تقييم موثق جديد!',
+      message: `قام ${user.name} بتقييم أدائك ${starCount} من 5 نجوم للرحلة #${trip.tripNumber}`,
       type: 'system',
       link: `/trips/${trip.id}`,
+    });
+
+    // 6. Audit log in PostgreSQL
+    await db.insert(auditLogs).values({
+      id: `log-${Date.now()}`,
+      actorId: user.uid,
+      actorName: user.name,
+      actorRole: user.role,
+      action: 'RATE_TRIP',
+      entity: 'rating',
+      entityId: ratingId,
+      details: `إضافة تقييم ${starCount} نجوم للرحلة #${trip.tripNumber}`,
     });
 
     return res.status(201).json({
@@ -66,7 +103,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error('Submit rating error:', error);
-    return res.status(500).json({ error: 'فشل حفظ التقييم' });
+    return res.status(500).json({ error: 'فشل حفظ التقييم في قاعدة البيانات' });
   }
 });
 

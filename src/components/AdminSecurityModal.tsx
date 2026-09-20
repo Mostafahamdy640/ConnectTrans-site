@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, X, ArrowLeft, KeyRound } from 'lucide-react';
+import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, X, KeyRound } from 'lucide-react';
 import { UserAccount } from '../types';
-import { INITIAL_USERS } from '../data/egyptLocations';
 import { ctStorage } from '../data/connectTransStorage';
 
 interface AdminSecurityModalProps {
@@ -22,50 +21,56 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAdminAuth = (e: React.FormEvent) => {
+  const handleAdminAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setIsVerifying(true);
 
-    setTimeout(() => {
-      // Master secure credentials for ConnectTrans Administration
-      const validPasscodes = ['admin2026', 'connecttrans@admin', 'ct2026'];
-      const cleanPass = adminPasscode.trim();
+    try {
+      const res = await fetch('/api/auth/admin-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          passcode: adminPasscode.trim(),
+        }),
+      });
 
-      if (validPasscodes.includes(cleanPass)) {
-        const adminAccount = INITIAL_USERS.find(u => u.role === 'admin') || {
-          id: 'USR-ADM-01',
-          name: 'أحمد محمود القاضي (المدير العام)',
-          role: 'admin',
-          phone: '01001234567',
-          governorate: 'القاهرة',
-          city: 'مدينة نصر',
-          status: 'active' as const,
-          verifiedDocs: true,
-          walletBalance: 245000,
-          rating: 5.0,
-          completedTrips: 1840,
-        };
+      const data = await res.json();
 
-        // Record audit log
-        ctStorage.addAuditLog({
-          actorId: adminAccount.id,
-          actorName: adminAccount.name,
-          actorRole: 'admin',
-          action: 'LOGIN',
-          entity: 'user',
-          entityId: adminAccount.id,
-          newValue: 'تسجيل دخول آمن للوحة المشرفين والمدير العام'
-        });
-
+      if (!res.ok || !data.success) {
         setIsVerifying(false);
-        onSuccess(adminAccount);
-        onClose();
-      } else {
-        setIsVerifying(false);
-        setErrorMsg('رمز المرور السري للمشرف غير صحيح. الدخول مصرح به للمشرفين المعتمدين فقط.');
+        setErrorMsg(data.error || 'رمز المرور الأمني غير صحيح أو الدخول غير مصرح به');
+        return;
       }
-    }, 600);
+
+      // Store JWT token safely
+      if (data.token) {
+        localStorage.setItem('ct_auth_token', data.token);
+      }
+
+      const adminAccount: UserAccount = {
+        id: data.user.uid,
+        name: data.user.name,
+        role: 'admin',
+        phone: data.user.phone,
+        governorate: data.user.governorate || 'القاهرة',
+        city: data.user.city || 'مدينة نصر',
+        status: 'active',
+        verifiedDocs: true,
+        walletBalance: data.user.walletBalance || 0,
+        rating: data.user.rating || 5.0,
+        completedTrips: 1840,
+      };
+
+      setIsVerifying(false);
+      onSuccess(adminAccount);
+      onClose();
+    } catch (err: any) {
+      setIsVerifying(false);
+      setErrorMsg('تعذر الاتصال بخادم المصادقة. يرجى التحقق من الشبكة.');
+    }
   };
 
   return (
@@ -98,7 +103,7 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
           <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-amber-300">
             <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <span>
-              هذه البوابة مخصصة حصرياً للمدير العام وفريق إدارة العمليات في ConnectTrans. لا تظهر هذه اللوحة للزوار في الواجهة العامة.
+              هذه البوابة مخصصة حصرياً للمدير العام وفريق إدارة العمليات في ConnectTrans. التحقق يتم عبر خادم التشفير وقاعدة بيانات PostgreSQL.
             </span>
           </div>
 
@@ -128,7 +133,6 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
                 <label className="block text-xs font-bold text-slate-300">
                   رمز المرور السري للإدارة (Security Passcode):
                 </label>
-                <span className="text-[10px] text-amber-400/80 font-mono">الرمز الافتراضي: admin2026</span>
               </div>
               <div className="relative">
                 <input
@@ -149,7 +153,7 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
               className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isVerifying ? (
-                <span>جاري التحقق من التشفير...</span>
+                <span>جاري التحقق عبر خادم التشفير...</span>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
@@ -158,20 +162,6 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
               )}
             </button>
           </form>
-
-          {/* Quick Demo Access for Testing */}
-          <div className="pt-3 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                setAdminUsername('admin@connecttrans.eg');
-                setAdminPasscode('admin2026');
-              }}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg transition-colors cursor-pointer text-center"
-            >
-              تعبئة الرمز التلقائي للاختبار (admin2026)
-            </button>
-          </div>
         </div>
       </div>
     </div>

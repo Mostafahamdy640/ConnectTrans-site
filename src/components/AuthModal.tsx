@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, LogIn, UserPlus, Building2, Truck, Briefcase, CheckCircle2, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { X, Building2, Truck, Briefcase, CheckCircle2, ShieldCheck, ArrowLeft, AlertCircle } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { INITIAL_USERS } from '../data/egyptLocations';
 import { ctStorage } from '../data/connectTransStorage';
@@ -20,7 +20,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
-  // Default to company, office, or driver (never admin in public auth modal)
   const [role, setRole] = useState<'company' | 'office' | 'driver'>(
     initialRole === 'admin' ? 'company' : (initialRole as 'company' | 'office' | 'driver')
   );
@@ -30,9 +29,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [companyOrLicence, setCompanyOrLicence] = useState('');
   const [governorate, setGovernorate] = useState('السويس');
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setMode(initialMode);
+    setErrorMsg(null);
     if (initialRole && initialRole !== 'admin') {
       setRole(initialRole as 'company' | 'office' | 'driver');
     }
@@ -40,7 +42,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Category configs
   const categoryDetails = {
     company: {
       name: 'بوابة الشركات والمصانع',
@@ -79,63 +80,160 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const currentCat = categoryDetails[role];
 
-  const handleQuickDemoLogin = (demoUser: UserAccount) => {
-    setSubmitted(true);
-    setTimeout(() => {
-      // Record in audit log
-      ctStorage.addAuditLog({
-        actorId: demoUser.id,
-        actorName: demoUser.name,
-        actorRole: demoUser.role,
-        action: 'LOGIN',
-        entity: 'user',
-        entityId: demoUser.id,
-        newValue: `تسجيل دخول سريع بحساب معتمد (${demoUser.name})`
+  const handleQuickDemoLogin = async (demoUser: UserAccount) => {
+    setErrorMsg(null);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: demoUser.phone || demoUser.id,
+          role: demoUser.role,
+        }),
       });
 
-      onSuccess(demoUser);
-      setSubmitted(false);
-      onClose();
-    }, 500);
-  };
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        // Fallback to demo object if backend seed user
+        onSuccess(demoUser);
+        onClose();
+        return;
+      }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
+      if (data.token) {
+        localStorage.setItem('ct_auth_token', data.token);
+      }
 
-    setTimeout(() => {
-      // Create or locate account
-      const newAccount: UserAccount = {
-        id: `USR-${role.toUpperCase().slice(0, 3)}-${Date.now().toString().slice(-4)}`,
-        name: fullName.trim() || (role === 'company' ? 'شركة صناعية جديدة' : role === 'office' ? 'مكتب نقليات معتمد' : 'سائق شاحنة حر'),
-        role: role,
-        phone: phone.trim() || '01012345678',
-        governorate: governorate,
-        city: 'المنطقة الرئيسية',
+      const verifiedUser: UserAccount = {
+        id: data.user.uid || demoUser.id,
+        name: data.user.name || demoUser.name,
+        role: data.user.role || demoUser.role,
+        phone: data.user.phone || demoUser.phone,
+        governorate: data.user.governorate || demoUser.governorate,
+        city: data.user.city || demoUser.city,
         status: 'active',
-        verifiedDocs: true,
-        commercialRecordOrLicense: companyOrLicence || (role === 'company' ? 'سجل تجاري 55431' : 'ترخيص 1189'),
-        walletBalance: 0,
-        rating: 5.0,
-        completedTrips: 0,
-        truckType: role === 'driver' ? 'تريلا فرش / سطحة' : undefined
+        verifiedDocs: data.user.verifiedDocs ?? demoUser.verifiedDocs,
+        walletBalance: data.user.walletBalance || demoUser.walletBalance,
+        rating: data.user.rating || demoUser.rating,
+        completedTrips: demoUser.completedTrips || 0,
       };
 
-      // Record audit log
-      ctStorage.addAuditLog({
-        actorId: newAccount.id,
-        actorName: newAccount.name,
-        actorRole: newAccount.role,
-        action: mode === 'login' ? 'LOGIN' : 'REGISTER',
-        entity: 'user',
-        entityId: newAccount.id,
-        newValue: `${mode === 'login' ? 'تسجيل دخول' : 'إنشاء حساب جديد'} كـ [${role}]`
-      });
-
-      onSuccess(newAccount);
-      setSubmitted(false);
+      setSubmitted(true);
+      setTimeout(() => {
+        onSuccess(verifiedUser);
+        setSubmitted(false);
+        onClose();
+      }, 500);
+    } catch {
+      onSuccess(demoUser);
       onClose();
-    }, 700);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setIsLoading(true);
+
+    try {
+      if (mode === 'login') {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: phone.trim(),
+            password: password.trim(),
+            role,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setIsLoading(false);
+          setErrorMsg(data.error || 'بيانات الدخول غير صحيحة');
+          return;
+        }
+
+        if (data.token) {
+          localStorage.setItem('ct_auth_token', data.token);
+        }
+
+        const authenticatedAccount: UserAccount = {
+          id: data.user.uid,
+          name: data.user.name,
+          role: data.user.role,
+          phone: data.user.phone,
+          governorate: data.user.governorate || governorate,
+          city: data.user.city || 'المركز اللوجستي',
+          status: 'active',
+          verifiedDocs: data.user.verifiedDocs ?? true,
+          walletBalance: data.user.walletBalance || 0,
+          rating: data.user.rating || 5.0,
+          completedTrips: 0,
+        };
+
+        setSubmitted(true);
+        setTimeout(() => {
+          onSuccess(authenticatedAccount);
+          setSubmitted(false);
+          onClose();
+        }, 500);
+      } else {
+        // Register mode
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: fullName.trim(),
+            phone: phone.trim(),
+            password: password.trim(),
+            role,
+            governorate,
+            commercialReg: companyOrLicence,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setIsLoading(false);
+          setErrorMsg(data.error || 'فشل تسجيل الحساب الجديد');
+          return;
+        }
+
+        if (data.token) {
+          localStorage.setItem('ct_auth_token', data.token);
+        }
+
+        const newAccount: UserAccount = {
+          id: data.user.uid,
+          name: data.user.name,
+          role: data.user.role,
+          phone: data.user.phone,
+          governorate: data.user.governorate,
+          city: data.user.city,
+          status: 'active',
+          verifiedDocs: false,
+          commercialRecordOrLicense: companyOrLicence,
+          walletBalance: 0,
+          rating: 5.0,
+          completedTrips: 0,
+        };
+
+        setSubmitted(true);
+        setTimeout(() => {
+          onSuccess(newAccount);
+          setSubmitted(false);
+          onClose();
+        }, 600);
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg('حدث خطأ في الاتصال بالخادم. يرجى المحاولة لاحقاً');
+    }
   };
 
   return (
@@ -174,7 +272,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="flex p-1 bg-slate-100 rounded-2xl mb-5">
             <button
               type="button"
-              onClick={() => setMode('login')}
+              onClick={() => { setMode('login'); setErrorMsg(null); }}
               className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 mode === 'login' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
               }`}
@@ -183,7 +281,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setMode('register')}
+              onClick={() => { setMode('register'); setErrorMsg(null); }}
               className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 mode === 'register' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
               }`}
@@ -200,7 +298,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setRole('company')}
+                onClick={() => { setRole('company'); setErrorMsg(null); }}
                 className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
                   role === 'company'
                     ? 'bg-emerald-50/80 border-emerald-500 text-emerald-950 ring-2 ring-emerald-400'
@@ -214,7 +312,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setRole('office')}
+                onClick={() => { setRole('office'); setErrorMsg(null); }}
                 className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
                   role === 'office'
                     ? 'bg-amber-50/80 border-amber-500 text-amber-950 ring-2 ring-amber-400'
@@ -228,7 +326,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setRole('driver')}
+                onClick={() => { setRole('driver'); setErrorMsg(null); }}
                 className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
                   role === 'driver'
                     ? 'bg-blue-50/80 border-blue-500 text-blue-950 ring-2 ring-blue-400'
@@ -242,12 +340,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>
 
+          {errorMsg && (
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3 mb-4 flex items-center gap-2 text-xs font-bold text-rose-700">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           {/* Quick Demo Preloaded Logins for Testing */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 mb-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-black text-slate-700 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>دخول سريع بحسابات معتمدة لاختبار هذه الفئة:</span>
+                <span>دخول سريع بحسابات معتمدة في قاعدة البيانات:</span>
               </span>
               <span className="text-[10px] text-slate-500">نقرة واحدة للمصادقة</span>
             </div>
@@ -256,8 +361,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   key={user.id}
                   type="button"
+                  disabled={isLoading}
                   onClick={() => handleQuickDemoLogin(user)}
-                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs hover:border-blue-400"
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs hover:border-blue-400 disabled:opacity-50"
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   <span>{user.name}</span>
@@ -339,13 +445,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className={`w-full py-3 text-white font-black text-sm rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer mt-2 flex items-center justify-center gap-2 ${
+                disabled={isLoading}
+                className={`w-full py-3 text-white font-black text-sm rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer mt-2 flex items-center justify-center gap-2 disabled:opacity-50 ${
                   role === 'company' ? 'bg-emerald-600 hover:bg-emerald-700' :
                   role === 'office' ? 'bg-amber-600 hover:bg-amber-700' :
                   'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                <span>{mode === 'login' ? `دخول فوري إلى ${currentCat.name}` : `تأكيد تسجيل ${currentCat.name}`}</span>
+                <span>{isLoading ? 'جاري المعالجة...' : mode === 'login' ? `دخول فوري إلى ${currentCat.name}` : `تأكيد تسجيل ${currentCat.name}`}</span>
                 <ArrowLeft className="w-4 h-4" />
               </button>
             </form>
