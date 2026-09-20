@@ -8,23 +8,14 @@ declare global {
   var _postgresPool: PgPool | undefined;
 }
 
-const isUrlValid = Boolean(
-  process.env.DATABASE_URL &&
-  (process.env.DATABASE_URL.startsWith('postgres://') || process.env.DATABASE_URL.startsWith('postgresql://'))
-);
-
-const poolConfig: PoolConfig = isUrlValid
-  ? { connectionString: process.env.DATABASE_URL }
-  : {
-      host: process.env.SQL_HOST || process.env.PGHOST || '127.0.0.1',
-      user: process.env.SQL_USER || process.env.PGUSER || 'postgres',
-      password: process.env.SQL_PASSWORD || process.env.PGPASSWORD || '',
-      database: process.env.SQL_DB_NAME || process.env.PGDATABASE || 'postgres',
-      port: Number(process.env.SQL_PORT || process.env.PGPORT || 5432),
-      max: 15,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-    };
+const poolConfig: PoolConfig = {
+  host: process.env.SQL_HOST || '127.0.0.1',
+  user: process.env.SQL_USER || 'postgres',
+  password: process.env.SQL_PASSWORD || '',
+  database: process.env.SQL_DB_NAME || 'postgres',
+  max: 10,
+  connectionTimeoutMillis: 15000,
+};
 
 export const createPool = () => {
   if (!global._postgresPool) {

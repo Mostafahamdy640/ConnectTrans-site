@@ -16,8 +16,10 @@ process.on('unhandledRejection', (reason, promise) => {
 // Load environment variables
 dotenv.config();
 
-// Determine production paths
-const distPath = path.resolve(process.cwd(), 'dist');
+// Determine directory paths safely for ESM and CJS
+const distPath = typeof __dirname !== 'undefined'
+  ? path.resolve(__dirname, 'dist')
+  : path.resolve(process.cwd(), 'dist');
 const indexHtmlPath = path.join(distPath, 'index.html');
 
 // Import API Routers
@@ -34,6 +36,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
   const HOST = '0.0.0.0';
+
+  // Trust reverse proxy (nginx / Cloud Run load balancer)
+  app.set('trust proxy', 1);
 
   // Global body parsers with safety limits
   app.use(express.json({ limit: '10mb' }));
