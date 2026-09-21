@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building2, Truck, Briefcase, CheckCircle2, ShieldCheck, ArrowLeft, AlertCircle } from 'lucide-react';
+import { X, Building2, Truck, Briefcase, CheckCircle2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
-import { INITIAL_USERS } from '../data/egyptLocations';
 import { ctStorage } from '../data/connectTransStorage';
 
 interface AuthModalProps {
@@ -52,7 +51,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       activeRing: 'ring-2 ring-emerald-500 bg-emerald-50 border-emerald-500',
       recordLabel: 'رقم السجل التجاري والبطاقة الضريبية:',
       recordPlaceholder: 'مثال: سجل تجاري 88219 / سويس',
-      demoUsers: INITIAL_USERS.filter(u => u.role === 'company')
     },
     office: {
       name: 'بوابة مكاتب النقل والوساطة',
@@ -63,7 +61,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       activeRing: 'ring-2 ring-amber-500 bg-amber-50 border-amber-500',
       recordLabel: 'رقم ترخيص مكتب النقل البري:',
       recordPlaceholder: 'مثال: ترخيص 44102 / نقل بضائع',
-      demoUsers: INITIAL_USERS.filter(u => u.role === 'office')
     },
     driver: {
       name: 'بوابة أصحاب السيارات والسائقين',
@@ -74,65 +71,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       activeRing: 'ring-2 ring-blue-500 bg-blue-50 border-blue-500',
       recordLabel: 'رقم رخصة القيادة ونوع الشاحنة:',
       recordPlaceholder: 'مثال: رخصة درجة أولى / تريلا فرش 30 طن',
-      demoUsers: INITIAL_USERS.filter(u => u.role === 'driver')
     }
   };
 
   const currentCat = categoryDetails[role];
-
-  const handleQuickDemoLogin = async (demoUser: UserAccount) => {
-    setErrorMsg(null);
-    setIsLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: demoUser.phone || demoUser.id,
-          role: demoUser.role,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        // Fallback to demo object if backend seed user
-        onSuccess(demoUser);
-        onClose();
-        return;
-      }
-
-      if (data.token) {
-        localStorage.setItem('ct_auth_token', data.token);
-      }
-
-      const verifiedUser: UserAccount = {
-        id: data.user.uid || demoUser.id,
-        name: data.user.name || demoUser.name,
-        role: data.user.role || demoUser.role,
-        phone: data.user.phone || demoUser.phone,
-        governorate: data.user.governorate || demoUser.governorate,
-        city: data.user.city || demoUser.city,
-        status: 'active',
-        verifiedDocs: data.user.verifiedDocs ?? demoUser.verifiedDocs,
-        walletBalance: data.user.walletBalance || demoUser.walletBalance,
-        rating: data.user.rating || demoUser.rating,
-        completedTrips: demoUser.completedTrips || 0,
-      };
-
-      setSubmitted(true);
-      setTimeout(() => {
-        onSuccess(verifiedUser);
-        setSubmitted(false);
-        onClose();
-      }, 500);
-    } catch {
-      onSuccess(demoUser);
-      onClose();
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -346,31 +288,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span>{errorMsg}</span>
             </div>
           )}
-
-          {/* Quick Demo Preloaded Logins for Testing */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 mb-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-black text-slate-700 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>دخول سريع بحسابات معتمدة في قاعدة البيانات:</span>
-              </span>
-              <span className="text-[10px] text-slate-500">نقرة واحدة للمصادقة</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {currentCat.demoUsers.map(user => (
-                <button
-                  key={user.id}
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => handleQuickDemoLogin(user)}
-                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs hover:border-blue-400 disabled:opacity-50"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span>{user.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           {submitted ? (
             <div className="py-8 text-center">

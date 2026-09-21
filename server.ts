@@ -16,11 +16,32 @@ process.on('unhandledRejection', (reason, promise) => {
 // Load environment variables
 dotenv.config();
 
-// Determine directory paths safely for ESM and CJS
-const distPath = typeof __dirname !== 'undefined'
-  ? path.resolve(__dirname, 'dist')
-  : path.resolve(process.cwd(), 'dist');
-const indexHtmlPath = path.join(distPath, 'index.html');
+// Determine production distribution directory and entry HTML safely
+function resolveDistPaths() {
+  const possiblePaths = [
+    typeof __dirname !== 'undefined' ? path.join(__dirname, 'index.html') : '',
+    path.join(process.cwd(), 'dist', 'index.html'),
+    typeof __dirname !== 'undefined' ? path.join(__dirname, '..', 'dist', 'index.html') : '',
+    typeof __dirname !== 'undefined' ? path.join(__dirname, 'dist', 'index.html') : '',
+  ].filter(Boolean);
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return {
+        distPath: path.dirname(p),
+        indexHtmlPath: p,
+      };
+    }
+  }
+
+  const fallbackDist = path.resolve(process.cwd(), 'dist');
+  return {
+    distPath: fallbackDist,
+    indexHtmlPath: path.join(fallbackDist, 'index.html'),
+  };
+}
+
+const { distPath, indexHtmlPath } = resolveDistPaths();
 
 // Import API Routers
 import authRouter from './src/server/routes/auth.ts';
@@ -109,10 +130,13 @@ async function startServer() {
     console.log(`[ConnectTrans] Production mode: Serving static files from ${distPath}`);
     app.use(express.static(distPath, { maxAge: '1h' }));
     app.get('*', (req, res) => {
-      if (fs.existsSync(indexHtmlPath)) {
-        res.sendFile(indexHtmlPath);
+      const activeHtml = fs.existsSync(indexHtmlPath)
+        ? indexHtmlPath
+        : resolveDistPaths().indexHtmlPath;
+      if (fs.existsSync(activeHtml)) {
+        res.sendFile(activeHtml);
       } else {
-        res.status(200).send('<!DOCTYPE html><html><body>ConnectTrans Engine is active</body></html>');
+        res.status(500).send('Connecting to ConnectTrans UI failed: Web app bundle index.html not found.');
       }
     });
   }
