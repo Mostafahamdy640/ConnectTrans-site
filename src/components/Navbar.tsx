@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Truck, LogIn, UserPlus, Menu, X, ShieldCheck, LogOut, LayoutDashboard, UserCheck, Building2, Briefcase } from 'lucide-react';
+import { Truck, LogIn, UserPlus, Menu, X, ShieldCheck, LogOut, LayoutDashboard, UserCheck, Building2, Briefcase, Smartphone } from 'lucide-react';
 import { PageId, UserAccount } from '../types';
 
 interface NavbarProps {
@@ -9,6 +9,7 @@ interface NavbarProps {
   onOpenAuth: (mode: 'login' | 'register', role?: 'company' | 'driver' | 'office') => void;
   onOpenAdmin: () => void;
   onLogout: () => void;
+  onOpenMobileApp?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -18,11 +19,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuth,
   onOpenAdmin,
   onLogout,
+  onOpenMobileApp,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks: { id: PageId; label: string }[] = [
+  const navLinks: { id: PageId; label: string; badge?: string }[] = [
     { id: 'home', label: 'الرئيسية' },
+    { id: 'orders', label: 'الطلبات وتتبع الرحلات', badge: 'مباشر' },
     { id: 'services', label: 'الخدمات' },
     { id: 'how-it-works', label: 'كيف تعمل المنصة' },
     { id: 'business', label: 'ConnectTrans' },
@@ -94,13 +97,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={link.id}
                   onClick={() => handleLinkClick(link.id)}
-                  className={`relative px-3 py-2 text-sm font-bold transition-all whitespace-nowrap cursor-pointer rounded-lg ${
+                  className={`relative px-3 py-2 text-sm font-bold transition-all whitespace-nowrap cursor-pointer rounded-lg inline-flex items-center gap-1.5 ${
                     isActive
                       ? 'text-blue-600 bg-blue-50/80 font-black'
                       : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
                   }`}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  {link.badge && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 inline-flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {link.badge}
+                    </span>
+                  )}
                   {isActive && (
                     <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full animate-fadeIn" />
                   )}
@@ -111,6 +120,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons (Right) */}
           <div className="hidden sm:flex items-center gap-2.5">
+            {/* Download Mobile App Button */}
+            {onOpenMobileApp && (
+              <button
+                onClick={onOpenMobileApp}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-2xs group"
+                title="تحميل تطبيق الهاتف (أندرويد وآيفون)"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                <span className="hidden md:inline">تطبيق الهاتف</span>
+              </button>
+            )}
+
             {currentUser ? (
               /* Authenticated User State */
               <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
@@ -278,6 +299,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>إنشاء حساب جديد</span>
                 </button>
               </>
+            )}
+
+            {onOpenMobileApp && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenMobileApp();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold rounded-lg hover:bg-emerald-100 cursor-pointer text-xs mt-1"
+              >
+                <Smartphone className="w-4 h-4 text-emerald-600" />
+                <span>تحميل تطبيق ConnectTrans (أندرويد وآيفون)</span>
+              </button>
             )}
           </div>
         </div>

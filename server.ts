@@ -114,7 +114,7 @@ async function startServer() {
 
   // Development vs Production Frontend Handling
   const isProduction = process.env.NODE_ENV === 'production';
-  if (!isProduction && !fs.existsSync(indexHtmlPath)) {
+  if (!isProduction) {
     try {
       console.log('[ConnectTrans] Development mode: Initializing Vite middleware...');
       const { createServer: createViteServer } = await import('vite');
@@ -128,12 +128,20 @@ async function startServer() {
     }
   } else {
     console.log(`[ConnectTrans] Production mode: Serving static files from ${distPath}`);
-    app.use(express.static(distPath, { maxAge: '1h' }));
+    app.use(express.static(distPath, { 
+      maxAge: 0,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        }
+      }
+    }));
     app.get('*', (req, res) => {
       const activeHtml = fs.existsSync(indexHtmlPath)
         ? indexHtmlPath
         : resolveDistPaths().indexHtmlPath;
       if (fs.existsSync(activeHtml)) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.sendFile(activeHtml);
       } else {
         res.status(500).send('Connecting to ConnectTrans UI failed: Web app bundle index.html not found.');

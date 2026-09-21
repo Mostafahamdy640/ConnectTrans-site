@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
+import { OrdersPage } from './pages/OrdersPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { HowItWorksPage } from './pages/HowItWorksPage';
 import { BusinessConnectionsPage } from './pages/BusinessConnectionsPage';
@@ -15,6 +16,7 @@ import { AdminSecurityModal } from './components/AdminSecurityModal';
 import { RoleDetailsModal } from './components/RoleDetailsModal';
 import { ServiceDetailsModal } from './components/ServiceDetailsModal';
 import { BookingModal } from './components/BookingModal';
+import { MobileAppModal } from './components/MobileAppModal';
 import { PageId, UserRole, UserAccount, CommissionProfile, SitePageContent, Shipment } from './types';
 import { CheckCircle2, ShieldAlert, Lock, ArrowLeft } from 'lucide-react';
 import { 
@@ -55,6 +57,7 @@ export default function App() {
   
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [mobileAppModalOpen, setMobileAppModalOpen] = useState(false);
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -81,7 +84,7 @@ export default function App() {
     const syncPageFromHash = () => {
       const hash = window.location.hash.replace('#', '') as PageId;
       const validPages: PageId[] = [
-        'home', 'services', 'how-it-works', 'business', 
+        'home', 'orders', 'services', 'how-it-works', 'business', 
         'reviews', 'contact', 'faq', 'dashboard', 'admin'
       ];
       if (validPages.includes(hash)) {
@@ -265,6 +268,7 @@ export default function App() {
           }
         }}
         onLogout={handleLogout}
+        onOpenMobileApp={() => setMobileAppModalOpen(true)}
       />
 
       {/* Main Single Page / View Renderer */}
@@ -278,6 +282,7 @@ export default function App() {
             onOpenAuth={handleOpenAuth}
             onSelectRole={handleSelectRolePortal}
             siteContent={siteContent}
+            onOpenMobileApp={() => setMobileAppModalOpen(true)}
           />
         )}
 
@@ -363,6 +368,16 @@ export default function App() {
           )
         )}
 
+        {/* Orders & Live Tracking Page */}
+        {currentPage === 'orders' && (
+          <OrdersPage
+            currentUser={currentUser}
+            onOpenBookingModal={handleBookShipment}
+            onOpenAuthModal={() => handleOpenAuth('login')}
+            showToast={showToast}
+          />
+        )}
+
         {/* 4. Services Page */}
         {currentPage === 'services' && (
           <ServicesPage
@@ -422,6 +437,7 @@ export default function App() {
         <Footer 
           onNavigate={handleNavigate} 
           onOpenAdminLogin={() => setAdminSecurityModalOpen(true)}
+          onOpenMobileApp={() => setMobileAppModalOpen(true)}
         />
       )}
 
@@ -463,6 +479,11 @@ export default function App() {
         onClose={() => setBookingModalOpen(false)}
         activeCommissionProfile={activeCommissionProfile}
         initialDetails={bookingDetails}
+      />
+
+      <MobileAppModal
+        isOpen={mobileAppModalOpen}
+        onClose={() => setMobileAppModalOpen(false)}
       />
 
     </div>

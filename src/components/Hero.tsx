@@ -5,6 +5,7 @@ import heroTruckImg from '../assets/images/hero_logistics_truck_1789141790632.jp
 interface HeroProps {
   onStartNow: () => void;
   onExploreMore: () => void;
+  onTrackTrips?: () => void;
   headline?: string;
   subheadline?: string;
 }
@@ -12,6 +13,7 @@ interface HeroProps {
 export const Hero: React.FC<HeroProps> = ({ 
   onStartNow, 
   onExploreMore,
+  onTrackTrips,
   headline,
   subheadline,
 }) => {
@@ -68,6 +70,18 @@ export const Hero: React.FC<HeroProps> = ({
                   i
                 </div>
               </button>
+
+              {/* Live Tracking GPS Button */}
+              {onTrackTrips && (
+                <button
+                  id="hero-track-trips-btn"
+                  onClick={onTrackTrips}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-base border border-emerald-300 rounded-xl transition-all shadow-2xs cursor-pointer"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span>تتبع الشحنات المباشر (خرائط Google)</span>
+                </button>
+              )}
             </div>
 
             {/* 4 Feature Badges Row (as shown in screenshot) */}

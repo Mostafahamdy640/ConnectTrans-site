@@ -369,7 +369,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                <span>{isLoading ? 'جاري المعالجة...' : mode === 'login' ? `دخول فوري إلى ${currentCat.name}` : `تأكيد تسجيل ${currentCat.name}`}</span>
+                <span>{isLoading ? 'جاري التحقق...' : mode === 'login' ? `تسجيل الدخول إلى ${currentCat.name}` : `تأكيد تسجيل ${currentCat.name}`}</span>
                 <ArrowLeft className="w-4 h-4" />
               </button>
             </form>

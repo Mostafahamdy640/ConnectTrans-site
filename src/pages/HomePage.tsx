@@ -19,6 +19,7 @@ import corpOfficeImg from '../assets/images/corp_office_card_1789141808610.jpg';
 import semiTruckImg from '../assets/images/semi_truck_card_1789141825517.jpg';
 import agencyOfficeImg from '../assets/images/agency_office_card_1789141842403.jpg';
 import { ConnectTransWorkflowManager } from '../components/ConnectTransWorkflowManager';
+import { MobileAppBanner } from '../components/MobileAppBanner';
 
 interface HomePageProps {
   currentUser: UserAccount | null;
@@ -26,6 +27,7 @@ interface HomePageProps {
   onOpenAuth: (mode: 'login' | 'register', role?: UserRole) => void;
   onSelectRole: (role: UserRole) => void;
   siteContent?: SitePageContent;
+  onOpenMobileApp?: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -34,6 +36,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onOpenAuth,
   onSelectRole,
   siteContent,
+  onOpenMobileApp,
 }) => {
   return (
     <div className="space-y-12 pb-16">
@@ -42,6 +45,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       <Hero
         onStartNow={() => onOpenAuth('register')}
         onExploreMore={() => onNavigate('business')}
+        onTrackTrips={() => onNavigate('orders')}
         headline={siteContent?.heroHeadline}
         subheadline={siteContent?.heroSubheadline}
       />
@@ -296,7 +300,12 @@ export const HomePage: React.FC<HomePageProps> = ({
         announcement={siteContent?.announcement}
       />
 
-      {/* 5. Quick Numbers & Trust Metrics */}
+      {/* 5. Mobile App Download & Live Sync Banner */}
+      {onOpenMobileApp && (
+        <MobileAppBanner onOpenModal={onOpenMobileApp} />
+      )}
+
+      {/* 6. Quick Numbers & Trust Metrics */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">

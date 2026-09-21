@@ -4,7 +4,7 @@ export type UserRole = 'admin' | 'company' | 'office' | 'vehicle_owner' | 'drive
 
 export type AccountStatus = 'pending' | 'approved' | 'rejected' | 'suspended' | 'deleted';
 
-export type PageId = 'home' | 'services' | 'how-it-works' | 'business' | 'reviews' | 'contact' | 'faq' | 'dashboard' | 'admin';
+export type PageId = 'home' | 'services' | 'how-it-works' | 'business' | 'orders' | 'reviews' | 'contact' | 'faq' | 'dashboard' | 'admin';
 
 // Document uploaded by any party
 export interface VerificationDocument {
@@ -249,9 +249,22 @@ export interface Trip {
   status: TripStatus;
   statusHistory: { status: TripStatus; timestamp: string; note?: string }[];
   currentLocation?: string;
+  currentLat?: number;
+  currentLng?: number;
+  originLat?: number;
+  originLng?: number;
+  destLat?: number;
+  destLng?: number;
+  estimatedMinutesRemaining?: number;
+  currentSpeedKmH?: number;
+  currentRoadName?: string;
   progressPercent: number;
   price: number;
   commission: number;
+  isPrivateDispatchOnly?: boolean;
+  privateTrackingPin?: string;
+  officeNotes?: string;
+  driverStatusNote?: string;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;

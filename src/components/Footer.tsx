@@ -1,13 +1,14 @@
 import React from 'react';
-import { Truck, ShieldCheck, Heart, MapPin, Phone, Mail, Lock } from 'lucide-react';
+import { Truck, ShieldCheck, Heart, MapPin, Phone, Mail, Lock, Smartphone, Download } from 'lucide-react';
 import { PageId } from '../types';
 
 interface FooterProps {
   onNavigate?: (page: PageId) => void;
   onOpenAdminLogin?: () => void;
+  onOpenMobileApp?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin, onOpenMobileApp }) => {
   const handleLink = (page: PageId) => {
     if (onNavigate) {
       onNavigate(page);
@@ -110,6 +111,36 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin }) 
           </div>
 
         </div>
+
+        {/* Mobile App Download Promo Strip */}
+        {onOpenMobileApp && (
+          <div className="my-8 p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg">
+            <div className="flex items-center gap-3 text-right">
+              <div className="w-11 h-11 rounded-xl bg-blue-600/30 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 shadow-inner">
+                <Smartphone className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h5 className="text-sm font-black text-white">حمّل تطبيق ConnectTrans لهاتفك</h5>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    مزامنة حية لحظياً
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  تطبيق متكامل لأجهزة أندرويد وآيفون يعمل بنفس بيانات الموقع بدون أي تعارض أو تأخير
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onOpenMobileApp}
+              className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 shrink-0 hover:scale-102"
+            >
+              <Download className="w-4 h-4" />
+              <span>تنزيل التطبيق (Google Play & App Store)</span>
+            </button>
+          </div>
+        )}
 
         {/* Bottom copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
