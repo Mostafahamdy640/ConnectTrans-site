@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Response } from 'express';
-import { eq, desc } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
+import { eq, desc, or } from 'drizzle-orm';
 import { db } from '../../db/index.ts';
 import { 
   users, companies, offices, vehicleOwners, vehicles, drivers,
@@ -8,7 +9,7 @@ import {
   tripStatusHistory, ratings, commissionProfiles, walletTransactions, 
   notifications, documents, auditLogs, supervisorPermissions, companyInquiries 
 } from '../../db/schema.ts';
-import { requireAuth, requireRole } from '../../middleware/auth.ts';
+import { requireAuth, requireRole, requirePermission } from '../../middleware/auth.ts';
 import type { AuthRequest } from '../../middleware/auth.ts';
 import { seedDatabase } from '../../db/seed.ts';
 
@@ -19,7 +20,7 @@ router.use(requireAuth);
 router.use(requireRole(['admin', 'supervisor']));
 
 // GET /api/admin/metrics - Real-time system stats directly from PostgreSQL
-router.get('/metrics', async (req: AuthRequest, res: Response) => {
+router.get('/metrics', requirePermission('reports.read'), async (req: AuthRequest, res: Response) => {
   try {
     const allUsers = await db.select().from(users);
     const allRequests = await db.select().from(transportRequests);
@@ -87,7 +88,7 @@ router.get('/metrics', async (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/admin/users - List users from PostgreSQL
-router.get('/users', async (req: AuthRequest, res: Response) => {
+router.get('/users', requirePermission('users.read'), async (req: AuthRequest, res: Response) => {
   try {
     const { role, status } = req.query;
     let list = await db.select().from(users).orderBy(desc(users.createdAt));
@@ -124,7 +125,7 @@ router.get('/users', async (req: AuthRequest, res: Response) => {
 });
 
 // PATCH /api/admin/users/:uid/status - Suspend or activate user
-router.patch('/users/:uid/status', async (req: AuthRequest, res: Response) => {
+router.patch('/users/:uid/status', requirePermission('users.manage'), async (req: AuthRequest, res: Response) => {
   try {
     const admin = req.user!;
     const { status, verifiedDocs } = req.body;
@@ -156,15 +157,20 @@ router.patch('/users/:uid/status', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// GET /api/admin/supervisors - List supervisors with permissions
+// GET /api/admin/supervisors - List supervisors with permissions (Super Admin only)
 router.get('/supervisors', async (req: AuthRequest, res: Response) => {
   try {
+    const admin = req.user!;
+    if (admin.role !== 'admin') {
+      return res.status(403).json({ error: 'إدارة المشرفين مقتصرة على المدير العام فقط' });
+    }
+
     const supervisorsList = await db.select().from(users).where(eq(users.role, 'supervisor'));
     const permissionsList = await db.select().from(supervisorPermissions);
 
     const result = supervisorsList.map(s => {
       const perm = permissionsList.find(p => p.userId === s.uid);
-      let perms = [];
+      let perms: string[] = [];
       try {
         perms = perm ? JSON.parse(perm.permissionsJson) : [];
       } catch {}
@@ -185,7 +191,92 @@ router.get('/supervisors', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// PATCH /api/admin/supervisors/:uid/permissions - Update supervisor permissions
+// POST /api/admin/supervisors - Create new supervisor with secure password and permissions (Super Admin only)
+router.post('/supervisors', async (req: AuthRequest, res: Response) => {
+  try {
+    const admin = req.user!;
+    if (admin.role !== 'admin') {
+      return res.status(403).json({ error: 'إنشاء المشرفين مقتصر على المدير العام (Super Admin) فقط' });
+    }
+
+    const { name, email, phone, password, permissions } = req.body;
+    if (!name || !phone || !password) {
+      return res.status(400).json({ error: 'الاسم ورقم الهاتف وكلمة المرور حقول مطلوبة لإنشاء المشرف' });
+    }
+
+    if (typeof password !== 'string' || password.trim().length < 6) {
+      return res.status(400).json({ error: 'كلمة المرور للمشرف يجب ألا تقل عن 6 خانات' });
+    }
+
+    const cleanPhone = phone.trim();
+    const cleanEmail = email ? email.trim().toLowerCase() : `${cleanPhone}@supervisor.connecttrans.eg`;
+
+    // Check if phone or email already in use
+    const existing = await db.select().from(users).where(
+      or(eq(users.phone, cleanPhone), eq(users.email, cleanEmail))
+    ).limit(1);
+
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'رقم الهاتف أو البريد الإلكتروني مسجل بالفعل لمستخدم آخر' });
+    }
+
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
+    const uid = `SUP-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+    const permsArray: string[] = Array.isArray(permissions) ? permissions : [];
+    const permsJson = JSON.stringify(permsArray);
+
+    const [newSupervisor] = await db.insert(users).values({
+      uid,
+      name: name.trim(),
+      email: cleanEmail,
+      passwordHash,
+      phone: cleanPhone,
+      role: 'supervisor',
+      governorate: 'القاهرة',
+      city: 'الإدارة العامة',
+      status: 'active',
+      verifiedDocs: true,
+      walletBalance: '0.00',
+      rating: '5.00',
+      permissions: permsJson,
+    }).returning();
+
+    await db.insert(supervisorPermissions).values({
+      userId: uid,
+      permissionsJson: permsJson,
+      assignedBy: admin.name,
+    });
+
+    await db.insert(auditLogs).values({
+      id: `log-${Date.now()}`,
+      actorId: admin.uid,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'CREATE_SUPERVISOR',
+      entity: 'supervisor',
+      entityId: uid,
+      details: `إنشاء حساب مشرف جديد [${name.trim()}] بصلاحيات: ${permsArray.join(', ') || 'بدون صلاحيات إضافية'}`,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'تم إنشاء حساب المشرف بنجاح وتحديد الصلاحيات',
+      supervisor: {
+        uid: newSupervisor.uid,
+        name: newSupervisor.name,
+        email: newSupervisor.email,
+        phone: newSupervisor.phone,
+        status: newSupervisor.status,
+        permissions: permsArray,
+      }
+    });
+  } catch (error) {
+    console.error('Create supervisor error:', error);
+    return res.status(500).json({ error: 'فشل إنشاء حساب المشرف في قاعدة البيانات' });
+  }
+});
+
+// PATCH /api/admin/supervisors/:uid/permissions - Update supervisor permissions (Super Admin only)
 router.patch('/supervisors/:uid/permissions', async (req: AuthRequest, res: Response) => {
   try {
     const admin = req.user!;
@@ -219,7 +310,7 @@ router.patch('/supervisors/:uid/permissions', async (req: AuthRequest, res: Resp
       actorId: admin.uid,
       actorName: admin.name,
       actorRole: admin.role,
-      action: 'EDIT',
+      action: 'EDIT_SUPERVISOR_PERMISSIONS',
       entity: 'supervisor',
       entityId: req.params.uid,
       details: `تحديث صلاحيات المشرف إلى: ${permissionsArray.join(', ')}`,
@@ -232,8 +323,43 @@ router.patch('/supervisors/:uid/permissions', async (req: AuthRequest, res: Resp
   }
 });
 
+// DELETE /api/admin/supervisors/:uid - Delete or revoke supervisor completely (Super Admin only)
+router.delete('/supervisors/:uid', async (req: AuthRequest, res: Response) => {
+  try {
+    const admin = req.user!;
+    if (admin.role !== 'admin') {
+      return res.status(403).json({ error: 'حذف أو سحب المشرفين مقتصر على المدير العام فقط' });
+    }
+
+    const targetUid = req.params.uid;
+    const [sup] = await db.select().from(users).where(eq(users.uid, targetUid));
+    if (!sup || sup.role !== 'supervisor') {
+      return res.status(404).json({ error: 'المشرف غير موجود' });
+    }
+
+    await db.delete(supervisorPermissions).where(eq(supervisorPermissions.userId, targetUid));
+    await db.delete(users).where(eq(users.uid, targetUid));
+
+    await db.insert(auditLogs).values({
+      id: `log-${Date.now()}`,
+      actorId: admin.uid,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'DELETE_SUPERVISOR',
+      entity: 'supervisor',
+      entityId: targetUid,
+      details: `سحب وحذف حساب المشرف [${sup.name}] نهائياً من النظام`,
+    });
+
+    return res.json({ success: true, message: 'تم سحب وحذف حساب المشرف بنجاح' });
+  } catch (error) {
+    console.error('Delete supervisor error:', error);
+    return res.status(500).json({ error: 'فشل حذف المشرف' });
+  }
+});
+
 // GET /api/admin/audit-logs - View system audit logs from PostgreSQL
-router.get('/audit-logs', async (req: AuthRequest, res: Response) => {
+router.get('/audit-logs', requirePermission('audit.read'), async (req: AuthRequest, res: Response) => {
   try {
     const logs = await db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp)).limit(200);
     return res.json({ success: true, logs });
@@ -244,7 +370,7 @@ router.get('/audit-logs', async (req: AuthRequest, res: Response) => {
 });
 
 // GET /api/admin/commission-profiles - List profiles
-router.get('/commission-profiles', async (req: AuthRequest, res: Response) => {
+router.get('/commission-profiles', requirePermission('financials.manage'), async (req: AuthRequest, res: Response) => {
   try {
     const profiles = await db.select().from(commissionProfiles);
     return res.json({
@@ -262,7 +388,7 @@ router.get('/commission-profiles', async (req: AuthRequest, res: Response) => {
 });
 
 // PATCH /api/admin/commission-profiles/:id - Update profile
-router.patch('/commission-profiles/:id', async (req: AuthRequest, res: Response) => {
+router.patch('/commission-profiles/:id', requirePermission('financials.manage'), async (req: AuthRequest, res: Response) => {
   try {
     const admin = req.user!;
     const { active, multiplier, tiers } = req.body;
@@ -299,7 +425,7 @@ router.patch('/commission-profiles/:id', async (req: AuthRequest, res: Response)
 
 // GET /api/admin/backup - Comprehensive PostgreSQL Database Backup
 // Requirement 23: Complete snapshot of PostgreSQL core tables
-router.get('/backup', async (req: AuthRequest, res: Response) => {
+router.get('/backup', requirePermission('backup.manage'), async (req: AuthRequest, res: Response) => {
   try {
     const admin = req.user!;
     const [

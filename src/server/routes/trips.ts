@@ -132,6 +132,13 @@ router.patch('/:id/status', requireAuth, async (req: AuthRequest, res: Response)
       return res.status(403).json({ error: 'غير مصرح بتعديل حالة هذه الرحلة' });
     }
 
+    // Requirement 5: Office cannot perform driver operations
+    if (user.role === 'office' && ['loading', 'in_progress', 'delivered'].includes(status)) {
+      return res.status(403).json({ 
+        error: 'المكتب لا يستطيع تنفيذ العمليات التشغيلية الخاصة بالسائق (بدء التحميل، النقل في الطريق، والتسليم)' 
+      });
+    }
+
     let progress = progressPercent !== undefined ? progressPercent : trip.progressPercent;
     if (status === 'delivered') progress = 95;
     if (status === 'completed') progress = 100;

@@ -14,8 +14,8 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [adminUsername, setAdminUsername] = useState('');
-  const [adminPasscode, setAdminPasscode] = useState('');
+  const [adminIdentifier, setAdminIdentifier] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
@@ -27,13 +27,14 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
     setIsVerifying(true);
 
     try {
-      const res = await fetch('/api/auth/admin-login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          passcode: adminPasscode.trim(),
+          identifier: adminIdentifier.trim(),
+          password: adminPassword.trim(),
         }),
       });
 
@@ -41,7 +42,13 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
 
       if (!res.ok || !data.success) {
         setIsVerifying(false);
-        setErrorMsg(data.error || 'رمز المرور الأمني غير صحيح أو الدخول غير مصرح به');
+        setErrorMsg(data.error || 'بيانات الدخول غير صحيحة أو الحساب غير مصرح له');
+        return;
+      }
+
+      if (data.user.role !== 'admin' && data.user.role !== 'supervisor') {
+        setIsVerifying(false);
+        setErrorMsg('غير مصرح: الحساب المدخل ليس لديه صلاحية الإدارة أو الإشراف على النظام');
         return;
       }
 
@@ -53,7 +60,7 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
       const adminAccount: UserAccount = {
         id: data.user.uid,
         name: data.user.name,
-        role: 'admin',
+        role: data.user.role,
         phone: data.user.phone,
         governorate: data.user.governorate || 'القاهرة',
         city: data.user.city || 'مدينة نصر',
@@ -86,8 +93,8 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-black text-white">بوابة الإدارة والمشرفين المشفرة</h3>
-              <p className="text-xs text-slate-400">دخول محمي ومقيد بإجراءات الأمان العالي</p>
+              <h3 className="text-base font-black text-white">بوابة الإدارة والمشرفين</h3>
+              <p className="text-xs text-slate-400">تسجيل دخول رسمي مشفر عبر خادم PostgreSQL</p>
             </div>
           </div>
           <button
@@ -103,7 +110,7 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
           <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-amber-300">
             <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <span>
-              هذه البوابة مخصصة حصرياً للمدير العام وفريق إدارة العمليات في ConnectTrans. التحقق يتم عبر خادم التشفير وقاعدة بيانات PostgreSQL.
+              هذه البوابة مخصصة حصرياً للمدير العام (Super Admin) والمشرفين المعتمدين. التحقق يتم بمطابقة كلمة المرور وقاعدة البيانات.
             </span>
           </div>
 
@@ -117,13 +124,14 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
           <form onSubmit={handleAdminAuth} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                اسم المستخدم أو بريد الإدارة:
+                رقم الهاتف أو اسم المستخدم:
               </label>
               <input
                 type="text"
-                value={adminUsername}
-                onChange={(e) => setAdminUsername(e.target.value)}
-                placeholder="admin@connecttrans.eg أو admin"
+                required
+                value={adminIdentifier}
+                onChange={(e) => setAdminIdentifier(e.target.value)}
+                placeholder="01000000001 أو البريد الرسمي"
                 className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold text-white placeholder-slate-500 focus:border-amber-400 focus:outline-hidden"
               />
             </div>
@@ -131,15 +139,15 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-300">
-                  رمز المرور السري للإدارة (Security Passcode):
+                  كلمة المرور:
                 </label>
               </div>
               <div className="relative">
                 <input
                   type="password"
                   required
-                  value={adminPasscode}
-                  onChange={(e) => setAdminPasscode(e.target.value)}
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold text-white placeholder-slate-500 focus:border-amber-400 focus:outline-hidden"
                 />
@@ -153,7 +161,7 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
               className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isVerifying ? (
-                <span>جاري التحقق عبر خادم التشفير...</span>
+                <span>جاري التحقق عبر خادم المصادقة...</span>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />

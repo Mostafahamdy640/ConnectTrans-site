@@ -13,6 +13,8 @@ import { ConnectTransWorkflowManager } from './ConnectTransWorkflowManager';
 import { RequestLifecycleManager } from './RequestLifecycleManager';
 import { TripRatingManager } from './TripRatingManager';
 import { AuditAndBackupManager } from './AuditAndBackupManager';
+import { SupervisorManager } from './SupervisorManager';
+import { UserCheck } from 'lucide-react';
 
 interface AdminPanelProps {
   users: UserAccount[];
@@ -33,7 +35,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateSiteContent,
   onNavigateToHome,
 }) => {
-  const [activeTab, setActiveTab] = useState<'workflow' | 'entities' | 'requests' | 'trips' | 'commission' | 'users' | 'backup' | 'cms'>('workflow');
+  const [activeTab, setActiveTab] = useState<'workflow' | 'entities' | 'requests' | 'trips' | 'commission' | 'users' | 'supervisors' | 'backup' | 'cms'>('workflow');
   
   // Commission Profiles state
   const [profiles, setProfiles] = useState<CommissionProfile[]>(commissionProfiles);
@@ -328,6 +330,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           >
             <Users className="w-4 h-4 text-indigo-400" />
             <span>مستخدمو النظام الأساسيون</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('supervisors')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'supervisors'
+                ? 'border-amber-400 text-amber-300 bg-amber-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UserCheck className="w-4 h-4 text-amber-400" />
+            <span>المشرفين وصلاحيات الـ RBAC</span>
           </button>
 
           <button
@@ -970,6 +984,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
 
           </div>
+        )}
+
+        {/* ================= TAB: SUPERVISORS & RBAC MANAGEMENT ================= */}
+        {activeTab === 'supervisors' && (
+          <SupervisorManager />
         )}
 
         {/* ================= TAB 3: PAGE CONTENT & CMS ================= */}

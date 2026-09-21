@@ -90,6 +90,219 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /api/requests/available - Clearly separated: Published & open requests available for drivers
+router.get('/available', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const all = await db.select().from(transportRequests).orderBy(desc(transportRequests.createdAt));
+    
+    // Filter open requests with remaining quantity > 0
+    const available = all.filter(r => 
+      r.remainingQuantity > 0 && 
+      ['open', 'has_offers', 'partially_accepted'].includes(r.status) &&
+      r.creatorId !== user.uid
+    );
+
+    const mapped = await Promise.all(available.map(async (r) => {
+      const offers = await db.select().from(officeOffers).where(eq(officeOffers.requestId, r.id));
+      return {
+        ...r,
+        pricePerUnit: Number(r.pricePerUnit),
+        weightTons: Number(r.weightTons || 25),
+        creatorPhone: maskPhone(r.creatorPhone),
+        offersCount: offers.length,
+      };
+    }));
+
+    return res.json({ success: true, requests: mapped });
+  } catch (error) {
+    console.error('Fetch available requests error:', error);
+    return res.status(500).json({ error: 'فشل جلب الطلبات المتاحة' });
+  }
+});
+
+// GET /api/requests/my-requests - Scoped "طلباتي" (My Requests) for current user
+// Office/Company: requests they published (current, in_progress, completed) + received offers
+// Driver: requests they accepted + their active/completed trips
+router.get('/my-requests', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+
+    if (user.role === 'office' || user.role === 'company') {
+      const userRequests = await db.select().from(transportRequests)
+        .where(eq(transportRequests.creatorId, user.uid))
+        .orderBy(desc(transportRequests.createdAt));
+
+      const detailed = await Promise.all(userRequests.map(async (r) => {
+        const offers = await db.select().from(officeOffers).where(eq(officeOffers.requestId, r.id));
+        const acceptances = await db.select().from(requestAcceptances).where(eq(requestAcceptances.requestId, r.id));
+        const relatedTrips = await db.select().from(trips).where(eq(trips.requestId, r.id));
+
+        return {
+          ...r,
+          pricePerUnit: Number(r.pricePerUnit),
+          weightTons: Number(r.weightTons || 25),
+          offers,
+          acceptances,
+          trips: relatedTrips.map(t => ({
+            ...t,
+            price: Number(t.price),
+            commission: Number(t.commission || 0),
+          })),
+        };
+      }));
+
+      const current = detailed.filter(r => r.status === 'open' || r.status === 'has_offers');
+      const inProgress = detailed.filter(r => r.status === 'partially_accepted' || r.trips.some(t => ['assigned', 'loading', 'in_progress'].includes(t.status)));
+      const completed = detailed.filter(r => r.status === 'closed' || (r.trips.length > 0 && r.trips.every(t => ['delivered', 'completed'].includes(t.status))));
+
+      return res.json({
+        success: true,
+        role: user.role,
+        summary: {
+          total: detailed.length,
+          currentCount: current.length,
+          inProgressCount: inProgress.length,
+          completedCount: completed.length,
+        },
+        current,
+        inProgress,
+        completed,
+        all: detailed,
+      });
+    } else if (user.role === 'driver' || user.role === 'vehicle_owner') {
+      const driverAcceptances = await db.select().from(requestAcceptances)
+        .where(eq(requestAcceptances.acceptedById, user.uid))
+        .orderBy(desc(requestAcceptances.createdAt));
+
+      const driverTrips = await db.select().from(trips)
+        .where(or(eq(trips.driverId, user.uid), eq(trips.transporterId, user.uid)))
+        .orderBy(desc(trips.createdAt));
+
+      const items = await Promise.all(driverAcceptances.map(async (acc) => {
+        const [parentReq] = await db.select().from(transportRequests).where(eq(transportRequests.id, acc.requestId));
+        const matchingTrip = driverTrips.find(t => t.acceptanceId === acc.id || t.requestId === acc.requestId);
+
+        return {
+          acceptanceId: acc.id,
+          requestId: acc.requestId,
+          requestNumber: parentReq?.requestNumber || 'REQ-UNKNOWN',
+          fromGovernorate: parentReq?.fromGovernorate || '',
+          fromCity: parentReq?.fromCity || '',
+          toGovernorate: parentReq?.toGovernorate || '',
+          toCity: parentReq?.toCity || '',
+          cargoType: parentReq?.cargoType || '',
+          truckType: parentReq?.truckType || '',
+          acceptedQuantity: acc.acceptedQuantity,
+          pricePerUnit: Number(acc.pricePerUnit),
+          totalPrice: Number(acc.totalPrice),
+          status: matchingTrip ? matchingTrip.status : acc.status,
+          trip: matchingTrip ? {
+            ...matchingTrip,
+            price: Number(matchingTrip.price),
+            commission: Number(matchingTrip.commission || 0),
+          } : null,
+          creatorName: parentReq?.creatorName || 'صاحب البضاعة',
+          creatorPhone: parentReq?.creatorPhone || '',
+          createdAt: acc.createdAt,
+        };
+      }));
+
+      const current = items.filter(item => !item.trip || ['pending', 'assigned'].includes(item.trip.status));
+      const inProgress = items.filter(item => item.trip && ['loading', 'in_progress'].includes(item.trip.status));
+      const completed = items.filter(item => item.trip && ['delivered', 'completed'].includes(item.trip.status));
+
+      return res.json({
+        success: true,
+        role: user.role,
+        summary: {
+          total: items.length,
+          currentCount: current.length,
+          inProgressCount: inProgress.length,
+          completedCount: completed.length,
+        },
+        current,
+        inProgress,
+        completed,
+        all: items,
+      });
+    } else {
+      // Admin / Supervisor
+      const allRequests = await db.select().from(transportRequests).orderBy(desc(transportRequests.createdAt));
+      return res.json({
+        success: true,
+        role: user.role,
+        all: allRequests,
+      });
+    }
+  } catch (error) {
+    console.error('Fetch my-requests error:', error);
+    return res.status(500).json({ error: 'فشل جلب قائمة طلباتي' });
+  }
+});
+
+// PATCH /api/requests/:id - Edit request (Creator or Super Admin only - Prevents IDOR)
+router.patch('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const [existing] = await db.select().from(transportRequests).where(eq(transportRequests.id, req.params.id));
+    if (!existing) {
+      return res.status(404).json({ error: 'طلب النقل غير موجود' });
+    }
+
+    // IDOR Prevention: Driver or other users cannot edit someone else's request
+    const isOwner = user.uid === existing.creatorId || user.role === 'admin';
+    if (!isOwner) {
+      return res.status(403).json({ error: 'غير مصرح: لا يمكنك تعديل طلبات شحن تخص أطراف أخرى' });
+    }
+
+    if (existing.status === 'closed') {
+      return res.status(400).json({ error: 'لا يمكن تعديل طلب نقل مغلق ومكتمل' });
+    }
+
+    const { pricePerUnit, requiredQuantity, notes, truckType, cargoType } = req.body;
+    const updateData: any = { updatedAt: new Date() };
+
+    if (pricePerUnit !== undefined) {
+      const p = parseFloat(String(pricePerUnit));
+      if (isNaN(p) || p <= 0) return res.status(400).json({ error: 'سعر النقل يجب أن يكون رقماً موجباً' });
+      updateData.pricePerUnit = String(p);
+    }
+
+    if (requiredQuantity !== undefined) {
+      const q = parseInt(String(requiredQuantity), 10);
+      if (isNaN(q) || q < existing.acceptedQuantity) {
+        return res.status(400).json({ error: `الكمية الإجمالية لا يمكن أن تقل عن الحمولات المقبولة بالفعل (${existing.acceptedQuantity})` });
+      }
+      updateData.requiredQuantity = q;
+      updateData.remainingQuantity = q - existing.acceptedQuantity;
+      if (updateData.remainingQuantity === 0) updateData.status = 'closed';
+    }
+
+    if (notes !== undefined) updateData.notes = notes;
+    if (truckType) updateData.truckType = truckType;
+    if (cargoType) updateData.cargoType = cargoType;
+
+    const [updated] = await db.update(transportRequests).set(updateData).where(eq(transportRequests.id, req.params.id)).returning();
+
+    await db.insert(auditLogs).values({
+      id: `log-${Date.now()}`,
+      actorId: user.uid,
+      actorName: user.name,
+      actorRole: user.role,
+      action: 'UPDATE_REQUEST',
+      entity: 'request',
+      entityId: existing.id,
+      details: `تعديل بيانات طلب الشحن #${existing.requestNumber}`,
+    });
+
+    return res.json({ success: true, request: updated });
+  } catch (error) {
+    console.error('Update request error:', error);
+    return res.status(500).json({ error: 'فشل تعديل طلب النقل' });
+  }
+});
+
 // POST /api/requests - Create a new transport request (Company, Office, or Admin)
 router.post('/', requireAuth, requireRole(['company', 'office', 'admin', 'supervisor']), async (req: AuthRequest, res: Response) => {
   try {
@@ -286,9 +499,18 @@ router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) 
     const requestId = req.params.id;
     const { quantity, offerId, vehiclePlate, driverName, driverPhone } = req.body;
 
-    const acceptedQty = parseInt(String(quantity), 10) || 1;
-    if (acceptedQty <= 0) {
-      return res.status(400).json({ error: 'الكمية المقبولة يجب أن تكون 1 على الأقل' });
+    // Requirement 5: Office cannot accept others' requests
+    if (user.role === 'office') {
+      return res.status(403).json({ error: 'المكتب لا يستطيع قبول طلبات الآخرين. مكاتب النقل تقدم عروض أسعار فقط ولا تنفذ عمليات السائق.' });
+    }
+
+    if (user.role === 'company') {
+      return res.status(403).json({ error: 'الشركات تطرح طلبات الشحن ولا تقبل الطلبات.' });
+    }
+
+    const acceptedQty = parseInt(String(quantity), 10);
+    if (isNaN(acceptedQty) || acceptedQty <= 0) {
+      return res.status(400).json({ error: 'الكمية المقبولة يجب أن تكون رقماً صحيحاً موجباً (1 على الأقل)' });
     }
 
     // Execute atomic PostgreSQL transaction
@@ -300,6 +522,10 @@ router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) 
         throw new Error('طلب النقل غير موجود في النظام');
       }
 
+      if (reqRecord.creatorId === user.uid) {
+        throw new Error('لا يمكن لصاحب طلب النقل قبول طلبه بنفسه');
+      }
+
       if (reqRecord.status === 'closed' || reqRecord.remainingQuantity <= 0) {
         throw new Error('عذراً، هذا الطلب مكتمل ومغلق بالفعل ولا يقبل حمولات إضافية');
       }
@@ -309,6 +535,11 @@ router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) 
         throw new Error(
           `الكمية المراد قبولها (${acceptedQty}) أكبر من الكمية المتبقية المتاحة (${reqRecord.remainingQuantity})`
         );
+      }
+
+      const newRemaining = reqRecord.remainingQuantity - acceptedQty;
+      if (newRemaining < 0) {
+        throw new Error('العملية غير صالحة: الكمية المتبقية لا يمكن أن تصبح سالبة');
       }
 
       let agreedUnitPrice = Number(reqRecord.pricePerUnit);
@@ -336,7 +567,6 @@ router.post('/:id/accept', requireAuth, async (req: AuthRequest, res: Response) 
       }
 
       // 2. Decrement remaining and increment accepted atomically in PostgreSQL
-      const newRemaining = reqRecord.remainingQuantity - acceptedQty;
       const newAccepted = reqRecord.acceptedQuantity + acceptedQty;
       const newStatus = newRemaining === 0 ? 'closed' : 'partially_accepted';
 

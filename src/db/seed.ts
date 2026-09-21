@@ -10,8 +10,11 @@ import { INITIAL_COMMISSION_PROFILES } from '../data/egyptLocations.ts';
 export async function seedDatabase() {
   console.log('🌱 Starting ConnectTrans database seed...');
 
-  const defaultPasswordHash = await bcrypt.hash('123456', 10);
-  const adminPasswordHash = await bcrypt.hash('admin2026', 10);
+  const initialUserPassword = process.env.INITIAL_USER_PASSWORD || 'CtUser#Sec99!Enterprise';
+  const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'CtAdmin#Secure#2026!Master';
+
+  const defaultPasswordHash = await bcrypt.hash(initialUserPassword, 10);
+  const adminPasswordHash = await bcrypt.hash(initialAdminPassword, 10);
 
   // 1. Commission Profiles
   for (const profile of INITIAL_COMMISSION_PROFILES) {

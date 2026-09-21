@@ -21,6 +21,10 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'الاسم ورقم الهاتف والصلاحية حقول مطلوبة' });
     }
 
+    if (!password || typeof password !== 'string' || password.trim().length < 6) {
+      return res.status(400).json({ error: 'كلمة المرور مطلوبة ويجب أن تتكون من 6 خانات على الأقل' });
+    }
+
     const cleanPhone = phone.trim();
     const cleanEmail = email ? email.trim().toLowerCase() : `${cleanPhone}@connecttrans.internal`;
 
@@ -33,7 +37,7 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'رقم الهاتف أو البريد الإلكتروني مسجل بالفعل' });
     }
 
-    const passwordHash = password ? await bcrypt.hash(password, 10) : await bcrypt.hash('ConnectTrans@2026', 10);
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
     const uid = `USR-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
 
     const [newUser] = await db.insert(users).values({
@@ -180,12 +184,18 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
-    // Strict Password Verification using bcrypt
-    if (password && user.passwordHash) {
-      const isMatch = await bcrypt.compare(password, user.passwordHash);
-      if (!isMatch) {
-        return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
-      }
+    // Strict Password Verification using bcrypt (NO BYPASS)
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ error: 'كلمة المرور مطلوبة لتسجيل الدخول' });
+    }
+
+    if (!user.passwordHash) {
+      return res.status(401).json({ error: 'الحساب غير مكتمل الأمان، يرجى مراجعة الدعم' });
+    }
+
+    const isMatch = await bcrypt.compare(password.trim(), user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'بيانات الدخول غير صحيحة أو كلمة المرور خاطئة' });
     }
 
     // Load supervisor permissions if applicable
@@ -225,7 +235,7 @@ router.post('/login', async (req: Request, res: Response) => {
       action: 'LOGIN',
       entity: 'user',
       entityId: user.uid,
-      details: 'تسجيل دخول ناجح إلى النظام والتحقق من قاعدة البيانات',
+      details: 'تسجيل دخول موثق عبر كلمة المرور الحقيقية والتحقق من قاعدة البيانات',
     });
 
     return res.json({
@@ -249,82 +259,6 @@ router.post('/login', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({ error: 'فشل التحقق من بيانات الدخول' });
-  }
-});
-
-// POST /api/auth/admin-login - Secure Admin Authentication
-// Strictly validates against process.env.ADMIN_SECURITY_PASSCODE or PostgreSQL Admin Hash (NO HARDCODED BYPASS)
-router.post('/admin-login', async (req: Request, res: Response) => {
-  try {
-    const { passcode } = req.body;
-
-    if (!passcode || typeof passcode !== 'string') {
-      return res.status(400).json({ error: 'يرجى إدخال الرمز الأمني للمدير العام' });
-    }
-
-    const cleanPasscode = passcode.trim();
-
-    // Fetch primary admin from PostgreSQL
-    let [adminUser] = await db.select().from(users).where(eq(users.role, 'admin')).limit(1);
-
-    if (!adminUser) {
-      return res.status(401).json({ error: 'حساب المدير العام غير مهيأ في قاعدة البيانات' });
-    }
-
-    // Verify passcode: against env secret if set, or against admin's passwordHash in PostgreSQL
-    let isAuthorized = false;
-    if (process.env.ADMIN_SECURITY_PASSCODE) {
-      isAuthorized = cleanPasscode === process.env.ADMIN_SECURITY_PASSCODE;
-    } else if (adminUser.passwordHash) {
-      isAuthorized = await bcrypt.compare(cleanPasscode, adminUser.passwordHash);
-    }
-
-    if (!isAuthorized) {
-      return res.status(401).json({ error: 'رمز المرور الأمني للمدير العام غير صحيح' });
-    }
-
-    const token = generateAuthToken({
-      id: adminUser.id,
-      uid: adminUser.uid,
-      name: adminUser.name,
-      email: adminUser.email,
-      phone: adminUser.phone,
-      role: 'admin',
-      permissions: ['*'],
-    });
-
-    await db.insert(auditLogs).values({
-      id: `log-${Date.now()}`,
-      actorId: adminUser.uid,
-      actorName: adminUser.name,
-      actorRole: 'admin',
-      action: 'ADMIN_ACCESS',
-      entity: 'security',
-      entityId: 'admin_portal',
-      details: 'تسجيل دخول موثق للمدير العام من لوحة التحكم الأمنية',
-    });
-
-    return res.json({
-      success: true,
-      token,
-      user: {
-        id: adminUser.id,
-        uid: adminUser.uid,
-        name: adminUser.name,
-        email: adminUser.email,
-        phone: adminUser.phone,
-        role: 'admin',
-        governorate: adminUser.governorate,
-        city: adminUser.city,
-        walletBalance: Number(adminUser.walletBalance || 0),
-        rating: Number(adminUser.rating || 5),
-        verifiedDocs: true,
-        permissions: ['*'],
-      }
-    });
-  } catch (error) {
-    console.error('Admin login error:', error);
-    return res.status(500).json({ error: 'فشل التحقق من صلاحية المدير' });
   }
 });
 

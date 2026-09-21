@@ -29,20 +29,10 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<PageId>('home');
   
   // High-Security Authenticated Session State
-  // Initialized to null (Visitor Mode) by default or loaded from localStorage
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    try {
-      const saved = localStorage.getItem('ct_authenticated_user');
-      if (!saved) return null;
-      const parsed = JSON.parse(saved);
-      if (parsed && (parsed.name?.includes('كليوباترا') || parsed.name?.includes('سيراميكا'))) {
-        parsed.name = 'شركة النيل للصناعات المتطورة';
-        try { localStorage.setItem('ct_authenticated_user', JSON.stringify(parsed)); } catch {}
-      }
-      return parsed;
-    } catch {
-      return null;
-    }
+  // Initialized to null (Visitor Mode) by default; session strictly verified via /api/auth/me
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [isSessionLoading, setIsSessionLoading] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('ct_auth_token'));
   });
 
   const [activeRole, setActiveRole] = useState<UserRole>(currentUser?.role || 'company');
@@ -116,7 +106,10 @@ export default function App() {
       fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error('Unauthorized');
+          return res.json();
+        })
         .then(data => {
           if (data.success && data.user) {
             const verifiedAccount: UserAccount = {
@@ -136,11 +129,18 @@ export default function App() {
             setActiveRole(data.user.role);
           } else {
             localStorage.removeItem('ct_auth_token');
-            localStorage.removeItem('ct_authenticated_user');
             setCurrentUser(null);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          localStorage.removeItem('ct_auth_token');
+          setCurrentUser(null);
+        })
+        .finally(() => {
+          setIsSessionLoading(false);
+        });
+    } else {
+      setIsSessionLoading(false);
     }
   }, []);
 
@@ -153,11 +153,6 @@ export default function App() {
   const handleAuthSuccess = (user: UserAccount) => {
     setCurrentUser(user);
     setActiveRole(user.role);
-    try {
-      localStorage.setItem('ct_authenticated_user', JSON.stringify(user));
-    } catch {
-      // ignore
-    }
 
     const roleLabel = 
       user.role === 'company' ? 'الشركات والمصانع' :
@@ -171,13 +166,8 @@ export default function App() {
   const handleAdminSuccess = (adminUser: UserAccount) => {
     setCurrentUser(adminUser);
     setActiveRole('admin');
-    try {
-      localStorage.setItem('ct_authenticated_user', JSON.stringify(adminUser));
-    } catch {
-      // ignore
-    }
 
-    showToast('تمت المصادقة الأمنية للمدير العام بنجاح! تم فتح لوحة الإدارة المركزية.');
+    showToast('تمت المصادقة الأمنية للإدارة بنجاح! تم فتح لوحة الإدارة المركزية.');
     setCurrentPage('admin');
     window.location.hash = 'admin';
   };
