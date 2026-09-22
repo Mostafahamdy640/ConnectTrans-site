@@ -107,11 +107,30 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
 
         {/* Content */}
         <div className="p-6 space-y-4">
-          <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-amber-300">
-            <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <span>
-              هذه البوابة مخصصة حصرياً للمدير العام (Super Admin) والمشرفين المعتمدين. التحقق يتم بمطابقة كلمة المرور وقاعدة البيانات.
-            </span>
+          <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3.5 space-y-2 text-xs text-amber-300">
+            <div className="flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <span>
+                هذه البوابة مخصصة حصرياً للمدير العام (Super Admin) والمشرفين المعتمدين.
+              </span>
+            </div>
+            <div className="bg-slate-900/90 border border-amber-400/40 rounded-xl p-2.5 flex items-center justify-between gap-2">
+              <div className="text-[11px] text-slate-300 leading-relaxed">
+                <div>المستخدم: <code className="text-amber-400 font-mono font-bold bg-amber-400/10 px-1.5 py-0.5 rounded">admin</code></div>
+                <div>كلمة المرور: <code className="text-amber-400 font-mono font-bold bg-amber-400/10 px-1.5 py-0.5 rounded">admin123</code></div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminIdentifier('admin');
+                  setAdminPassword('admin123');
+                  setErrorMsg(null);
+                }}
+                className="px-2.5 py-1.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 rounded-lg text-[11px] font-black cursor-pointer transition-colors shrink-0"
+              >
+                تعبئة سريعة
+              </button>
+            </div>
           </div>
 
           {errorMsg && (
@@ -124,14 +143,14 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
           <form onSubmit={handleAdminAuth} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                رقم الهاتف أو اسم المستخدم:
+                اسم المستخدم أو رقم الهاتف:
               </label>
               <input
                 type="text"
                 required
                 value={adminIdentifier}
                 onChange={(e) => setAdminIdentifier(e.target.value)}
-                placeholder="01000000001 أو البريد الرسمي"
+                placeholder="admin"
                 className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold text-white placeholder-slate-500 focus:border-amber-400 focus:outline-hidden"
               />
             </div>
@@ -148,7 +167,7 @@ export const AdminSecurityModal: React.FC<AdminSecurityModalProps> = ({
                   required
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="admin123"
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold text-white placeholder-slate-500 focus:border-amber-400 focus:outline-hidden"
                 />
                 <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />

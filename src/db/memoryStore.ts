@@ -39,8 +39,8 @@ class MemoryDatabaseStore {
     if (this.initialized) return;
     this.initialized = true;
 
-    const initialUserPassword = process.env.INITIAL_USER_PASSWORD || 'CtUser#Sec99!Enterprise';
-    const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'CtAdmin#Secure#2026!Master';
+    const initialUserPassword = process.env.INITIAL_USER_PASSWORD || '123456';
+    const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'admin123';
 
     const defaultPasswordHash = bcrypt.hashSync(initialUserPassword, 8);
     const adminPasswordHash = bcrypt.hashSync(initialAdminPassword, 8);
