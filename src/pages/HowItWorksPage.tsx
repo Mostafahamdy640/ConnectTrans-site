@@ -43,6 +43,65 @@ export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({
         <HowItWorks onRegisterRole={onRegisterRole} />
       </div>
 
+      {/* Driver & Vehicle Owner Delivery & Payout Guarantee Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 text-white rounded-3xl p-6 sm:p-8 border-2 border-amber-400 shadow-2xl relative overflow-hidden">
+          {/* Ambient Glow */}
+          <div className="absolute -top-12 -right-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base sm:text-lg font-black text-amber-300">
+                    ضمانات الدفع والتسليم لصاحب السيارة والسائق
+                  </h4>
+                  <p className="text-xs text-slate-400">منظومة موثقة ومحمية بين أصحاب الشاحنات ومكاتب النقل والشركات</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-xs font-black text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                تحصيل وصرف فوري معتمد
+              </span>
+            </div>
+
+            <p className="text-sm sm:text-base text-slate-100 font-bold leading-relaxed">
+              عند انتهاء التوصيل: <span className="text-amber-300 font-black">أكّد التوصيل</span>، ويتم <span className="text-sky-300 font-black">التأكد والاعتماد من المكتب</span> واستلم مدفوعاتك بعد التأكد من الانتهاء وتوصيل الأوراق المطلوبة بين الطرفين. وعند <span className="text-emerald-300 font-black underline decoration-emerald-400 decoration-2 underline-offset-4">تصريح المكتب بالصرف</span> يتم تحصيل وصرف المبلغ المالي فوراً.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-black">
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex items-center gap-2.5 text-amber-300">
+                <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">1</span>
+                <div>
+                  <span className="block font-bold">الخطوة الأولى</span>
+                  <span className="text-[11px] text-slate-300 font-normal">تأكيد التوصيل من جهة السائق بعد الوصول</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex items-center gap-2.5 text-sky-300">
+                <span className="w-6 h-6 rounded-full bg-sky-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">2</span>
+                <div>
+                  <span className="block font-bold">الخطوة الثانية</span>
+                  <span className="text-[11px] text-slate-300 font-normal">فحص واعتماد أوراق الشحنة من المكتب</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-950/60 border border-emerald-500/50 rounded-2xl p-3 flex items-center gap-2.5 text-emerald-300">
+                <span className="w-6 h-6 rounded-full bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">3</span>
+                <div>
+                  <span className="block font-bold">الخطوة الثالثة</span>
+                  <span className="text-[11px] text-slate-300 font-normal">إصدار تصريح الصرف وتحصيل المبلغ مباشرة</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 3. Detailed Workflow Comparison Table & Operational Features */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-lg border border-slate-200">

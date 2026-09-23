@@ -40,7 +40,7 @@ export default function App() {
   const [activeRole, setActiveRole] = useState<UserRole>(currentUser?.role || 'company');
   const [commissionProfiles, setCommissionProfiles] = useState<CommissionProfile[]>(INITIAL_COMMISSION_PROFILES);
   const [usersList, setUsersList] = useState<UserAccount[]>(INITIAL_USERS);
-  const [siteContent, setSiteContent] = useState<SitePageContent>(INITIAL_SITE_CONTENT);
+  const [siteContent, setSiteContent] = useState<SitePageContent>(() => ctStorage.getSiteContent());
   const [shipmentsList, setShipmentsList] = useState<Shipment[]>(SAMPLE_SHIPMENTS);
 
   // Active Commission Profile
@@ -74,6 +74,16 @@ export default function App() {
       return;
     }
 
+    // When logged in: Strictly restricted to requests & archive (and admin for administrators).
+    // Showcase pages only appear outside login as a mechanism presentation.
+    const showcasePages: PageId[] = ['services', 'how-it-works', 'business', 'reviews', 'contact', 'faq', 'dashboard'];
+    if (currentUser && showcasePages.includes(page)) {
+      setCurrentPage('home');
+      window.location.hash = 'home';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setCurrentPage(page);
     window.location.hash = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -92,6 +102,10 @@ export default function App() {
           setCurrentPage('home');
           window.location.hash = 'home';
           setAdminSecurityModalOpen(true);
+        } else if (currentUser && ['services', 'how-it-works', 'business', 'reviews', 'contact', 'faq', 'dashboard'].includes(hash)) {
+          // Keep logged in user focused strictly on requests and archive
+          setCurrentPage('home');
+          window.location.hash = 'home';
         } else {
           setCurrentPage(hash);
         }
@@ -163,7 +177,7 @@ export default function App() {
       user.role === 'driver' ? 'أصحاب الشاحنات والسيارات' : 'الإدارة العامة';
 
     showToast(`مرحباً بك ${user.name}! تم تسجيل الدخول بنجاح بصلاحية [${roleLabel}].`);
-    handleNavigate('dashboard');
+    handleNavigate('home');
   };
 
   const handleAdminSuccess = (adminUser: UserAccount) => {
@@ -335,6 +349,7 @@ export default function App() {
               siteContent={siteContent}
               onUpdateSiteContent={(newContent) => {
                 setSiteContent(newContent);
+                ctStorage.saveSiteContent(newContent);
                 showToast('تم حفظ ونشر التعديلات على صفحات الموقع فورياً.');
               }}
               onNavigateToHome={() => handleNavigate('home')}

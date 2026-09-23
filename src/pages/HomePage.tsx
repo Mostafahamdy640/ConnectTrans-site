@@ -19,7 +19,9 @@ import corpOfficeImg from '../assets/images/corp_office_card_1789141808610.jpg';
 import semiTruckImg from '../assets/images/semi_truck_card_1789141825517.jpg';
 import agencyOfficeImg from '../assets/images/agency_office_card_1789141842403.jpg';
 import { ConnectTransWorkflowManager } from '../components/ConnectTransWorkflowManager';
+import { TransportRequestsList } from '../components/TransportRequestsList';
 import { MobileAppBanner } from '../components/MobileAppBanner';
+import { ctStorage } from '../data/connectTransStorage';
 
 interface HomePageProps {
   currentUser: UserAccount | null;
@@ -38,21 +40,82 @@ export const HomePage: React.FC<HomePageProps> = ({
   siteContent,
   onOpenMobileApp,
 }) => {
+  // If the user is logged in:
+  // Show a simple, dedicated operational hub restricted to requests of all kinds & the archive!
+  // No marketing heroes, no promotional cards, no external pages.
+  if (currentUser) {
+    const roleLabel = 
+      currentUser.role === 'company' ? 'شركة ومصنع' :
+      currentUser.role === 'office' ? 'مكتب نقل معتمد' :
+      currentUser.role === 'driver' ? 'صاحب شاحنة وسائق' : 'المدير العام';
+
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        {/* Simple & Focused Operational Header */}
+        <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-13 h-13 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-md">
+              <Truck className="w-6 h-6 text-blue-400" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900">
+                  لوحة متابعة وإدارة الطلبات
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                  {roleLabel}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                مرحباً بك، <strong className="text-slate-800 font-bold">{currentUser.name}</strong> — يتم استعراض كافة الطلبات النشطة، الحصص المتاحة، وسجل الأرشيف التشغيلي.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end md:self-auto">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>جلسة تشغيلية مباشرة ومحمية</span>
+            </div>
+          </div>
+        </div>
+
+        {/* The Core Transport Requests & Archive Component */}
+        <TransportRequestsList
+          currentUser={currentUser}
+          onOpenAuth={onOpenAuth}
+          onNavigateToOrders={() => onNavigate('orders')}
+        />
+      </div>
+    );
+  }
+
+  // If the user is logged out (Guest/Public):
+  // Full showcase of ConnectTrans mechanism, hero banner, category portals, and features.
   return (
-    <div className="space-y-12 pb-16">
+    <div className="space-y-6 sm:space-y-8 pb-12">
       
       {/* 1. The Core Hero Banner */}
       <Hero
         onStartNow={() => onOpenAuth('register')}
         onExploreMore={() => onNavigate('business')}
         onTrackTrips={() => onNavigate('orders')}
+        onLogin={() => onOpenAuth('login')}
+        currentUser={currentUser}
         headline={siteContent?.heroHeadline}
+        secondHeadline={siteContent?.heroSecondLine}
+        badgeText={siteContent?.heroBadgeText}
         subheadline={siteContent?.heroSubheadline}
+        activeRoadTrucksText={
+          (!siteContent?.useLiveDatabaseStats && siteContent?.metricActiveRoadTrucks)
+            ? siteContent.metricActiveRoadTrucks
+            : undefined
+        }
       />
 
       {/* 2. Three Audience Cards - Dedicated Category Portals (الفئات الثلاث) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-10">
+        <div className="text-center max-w-2xl mx-auto mb-5">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-black mb-3">
             <Sparkles className="w-3.5 h-3.5" />
             <span>بوابات الدخول المخصصة لشركاء النقل</span>
@@ -211,10 +274,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </div>
 
-      {/* 3. Protected Operational Workflow & Data Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {currentUser ? (
-          /* When logged in: Render interactive workflow tailored to authenticated state */
+      {/* 3. Transport Requests Management & Workflow Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {currentUser && (
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
@@ -231,67 +293,14 @@ export const HomePage: React.FC<HomePageProps> = ({
               onRequireAuth={(role) => onOpenAuth('login', role)}
             />
           </div>
-        ) : (
-          /* When NOT logged in: High-security locked data shield */
-          <div className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 border border-slate-800 shadow-2xl relative overflow-hidden">
-            {/* Background pattern */}
-            <div className="absolute -left-20 -top-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="max-w-3xl mx-auto text-center relative z-10 space-y-6">
-              <div className="w-16 h-16 rounded-3xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 mx-auto shadow-inner">
-                <Lock className="w-8 h-8" />
-              </div>
-
-              <div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 inline-block mb-2">
-                  بيانات تشغيلية مشفرة ومحمية بأعلى معايير الأمان
-                </span>
-                <h3 className="text-2xl sm:text-3xl font-black text-white">
-                  منظومة عروض الأسعار، طلبات الشحن، وإسناد الرحلات
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
-                  حفاظاً على سرية وخصوصية الشركاء، يتم حجب تفاصيل طلبات النقل، عروض الأسعار، وقبولات الحمولات وبيانات الاتصال. تظهر كافة البيانات والتحكمات التشغيلية حصرياً بعد تسجيل الدخول وفق فئة حسابك المعتمدة.
-                </p>
-              </div>
-
-              {/* 3 Dedicated Category Login CTAs */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <button
-                  onClick={() => onOpenAuth('login', 'company')}
-                  className="p-4 rounded-2xl bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-500/40 text-right transition-all cursor-pointer group"
-                >
-                  <Building2 className="w-5 h-5 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
-                  <span className="block text-xs font-black text-white">دخول الشركات والمصانع</span>
-                  <span className="block text-[11px] text-emerald-300/80 mt-0.5">متابعة الطلبات والبوالص</span>
-                </button>
-
-                <button
-                  onClick={() => onOpenAuth('login', 'office')}
-                  className="p-4 rounded-2xl bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 text-right transition-all cursor-pointer group"
-                >
-                  <Briefcase className="w-5 h-5 text-amber-400 mb-2 group-hover:scale-110 transition-transform" />
-                  <span className="block text-xs font-black text-white">دخول مكاتب النقل</span>
-                  <span className="block text-[11px] text-amber-300/80 mt-0.5">تقديم العروض والأسطول</span>
-                </button>
-
-                <button
-                  onClick={() => onOpenAuth('login', 'driver')}
-                  className="p-4 rounded-2xl bg-blue-950/50 hover:bg-blue-900/60 border border-blue-500/40 text-right transition-all cursor-pointer group"
-                >
-                  <Truck className="w-5 h-5 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
-                  <span className="block text-xs font-black text-white">دخول أصحاب السيارات</span>
-                  <span className="block text-[11px] text-blue-300/80 mt-0.5">قبول الحمولات والعودة</span>
-                </button>
-              </div>
-
-              <div className="pt-2 text-xs text-slate-400 flex items-center justify-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>حسابات موثقة بالسجل التجاري وترخيص النقل البري والرقم القومي</span>
-              </div>
-            </div>
-          </div>
         )}
+
+        {/* Transport Requests & Trips Display (Public / Authorized) */}
+        <TransportRequestsList
+          currentUser={currentUser}
+          onOpenAuth={onOpenAuth}
+          onNavigateToOrders={() => onNavigate('orders')}
+        />
       </div>
 
       {/* 4. Promotional Banner */}
@@ -305,45 +314,78 @@ export const HomePage: React.FC<HomePageProps> = ({
         <MobileAppBanner onOpenModal={onOpenMobileApp} />
       )}
 
-      {/* 6. Quick Numbers & Trust Metrics */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div>
-              <span className="block text-3xl sm:text-4xl font-black text-amber-400 font-mono mb-1">
-                +45,000
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-300">
-                رحلة نقل مكتملة
-              </span>
-            </div>
-            <div>
-              <span className="block text-3xl sm:text-4xl font-black text-blue-400 font-mono mb-1">
-                +12,800
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-300">
-                شاحنة مسجلة ومعتمدة
-              </span>
-            </div>
-            <div>
-              <span className="block text-3xl sm:text-4xl font-black text-emerald-400 font-mono mb-1">
-                +3,200
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-300">
-                شركة ومصنع شريك
-              </span>
-            </div>
-            <div>
-              <span className="block text-3xl sm:text-4xl font-black text-amber-300 font-mono mb-1">
-                99.4%
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-300">
-                نسبة الالتزام بالمواعيد
-              </span>
+      {/* 6. Quick Numbers & Real Operational Trust Metrics */}
+      {(() => {
+        const realMetrics = ctStorage.getRealMetrics();
+        const displayMetrics = {
+          completedTrips: (!siteContent?.useLiveDatabaseStats && siteContent?.metricCompletedTrips)
+            ? siteContent.metricCompletedTrips
+            : `${realMetrics.completedTrips.toLocaleString()}`,
+          registeredTrucks: (!siteContent?.useLiveDatabaseStats && siteContent?.metricRegisteredTrucks)
+            ? siteContent.metricRegisteredTrucks
+            : `${realMetrics.registeredTrucks.toLocaleString()}`,
+          partnerCompanies: (!siteContent?.useLiveDatabaseStats && siteContent?.metricPartnerCompanies)
+            ? siteContent.metricPartnerCompanies
+            : `${realMetrics.partnerCompanies.toLocaleString()}`,
+          onTimeRate: (!siteContent?.useLiveDatabaseStats && siteContent?.metricOnTimeRate)
+            ? siteContent.metricOnTimeRate
+            : realMetrics.onTimeRate
+        };
+
+        return (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden border border-slate-800">
+              {/* Real-time Indicator Header */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs sm:text-sm font-black text-emerald-400">
+                    بيانات وإحصائيات تشغيلية حقيقية
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  محدثة لحظياً وتلقائياً من واقع قاعدة بيانات منصة ConnectTrans الفعلية
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                <div>
+                  <span className="block text-3xl sm:text-4xl font-black text-amber-400 font-mono mb-1">
+                    {displayMetrics.completedTrips}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-300">
+                    رحلة نقل مكتملة
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-3xl sm:text-4xl font-black text-blue-400 font-mono mb-1">
+                    {displayMetrics.registeredTrucks}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-300">
+                    شاحنة مسجلة ومعتمدة
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-3xl sm:text-4xl font-black text-emerald-400 font-mono mb-1">
+                    {displayMetrics.partnerCompanies}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-300">
+                    شركة ومصنع شريك
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-3xl sm:text-4xl font-black text-amber-300 font-mono mb-1">
+                    {displayMetrics.onTimeRate}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-300">
+                    نسبة الالتزام بالمواعيد
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
     </div>
   );

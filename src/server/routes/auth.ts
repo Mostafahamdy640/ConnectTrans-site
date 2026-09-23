@@ -157,6 +157,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const cleanIdentifier = String(identifier).trim();
     const isAdminIdentifier = [
+      'admin01',
       'admin',
       'admin@connecttrans.eg',
       'admin@connecttrans.com',
@@ -206,7 +207,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Easy admin passwords supported out of the box
-    const easyAdminPasswords = ['admin123', 'admin', '123456', 'admin@123', '12345678'];
+    const easyAdminPasswords = ['adminconnect', 'admin123', 'admin', '123456', 'admin@123', '12345678'];
     const isEasyAdminMatch = user.role === 'admin' && easyAdminPasswords.includes(password.trim());
 
     let isMatch = isEasyAdminMatch;

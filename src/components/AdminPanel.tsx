@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { CommissionProfile, CommissionTier, UserAccount, SitePageContent, UserRole } from '../types';
 import { calculateTripCommission } from '../data/egyptLocations';
+import { ctStorage } from '../data/connectTransStorage';
 import { ConnectTransEntityManager } from './ConnectTransEntityManager';
 import { ConnectTransWorkflowManager } from './ConnectTransWorkflowManager';
 import { RequestLifecycleManager } from './RequestLifecycleManager';
@@ -1081,6 +1082,200 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono focus:border-emerald-400 focus:outline-hidden"
                     />
                   </div>
+                </div>
+
+                {/* Operational Trust Metrics Config */}
+                <div className="pt-6 mt-4 border-t border-slate-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-black text-amber-400 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        <span>أرقام وإحصائيات العمليات والشاحنات الحقيقية</span>
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        التحكم الكامل في طريقة احتساب أرقام الشاحنات والرحلات المعروضة في الرئيسية والصفحات
+                      </p>
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={cmsContent.useLiveDatabaseStats !== false}
+                        onChange={(e) => setCmsContent({ ...cmsContent, useLiveDatabaseStats: e.target.checked })}
+                        className="rounded accent-emerald-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-emerald-400">
+                        حساب تلقائي حي من قاعدة البيانات
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* LIVE CALCULATION CONTROLS */}
+                  {cmsContent.useLiveDatabaseStats !== false && (() => {
+                    const db = ctStorage.getDatabase();
+                    const liveTripsCount = (db?.trips || []).filter(t => t.status === 'in_progress').length;
+                    const isPure = Boolean(cmsContent.pureDatabaseCountOnly);
+                    const currentBaseline = typeof cmsContent.activeRoadTrucksBaseline === 'number' 
+                      ? cmsContent.activeRoadTrucksBaseline 
+                      : 1454;
+                    const finalDisplayNumber = isPure || currentBaseline === 0 
+                      ? `${liveTripsCount}` 
+                      : `+${(currentBaseline + liveTripsCount).toLocaleString()}`;
+
+                    return (
+                      <div className="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 space-y-4">
+                        
+                        {/* 1. Pure Real Count Toggle (العدد الحقيقي الصافي بدون 1454) */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-amber-300">
+                                عرض العدد الفعلي الصافي فقط لقاعدة البيانات (إلغاء الأساس 1454)
+                              </span>
+                              {isPure && (
+                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-black rounded-md border border-emerald-500/30">
+                                  مفعل: صافي حقيقي فقط
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                              تفعيل هذا الخيار يلغي الرقم التراكمي السابق (1454)، ويعرض العدد الحقيقي الصافي للرحلات المنفذة حالياً فقط. (مثال: إذا كان لديك 7 شاحنات فقط، سيظهر الرقم 7 وليس 1461).
+                            </p>
+                          </div>
+
+                          <label className="flex items-center gap-2 cursor-pointer bg-slate-800 hover:bg-slate-700/80 px-4 py-2 rounded-xl border border-slate-700 transition-colors shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={isPure}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setCmsContent({
+                                  ...cmsContent,
+                                  pureDatabaseCountOnly: checked,
+                                  activeRoadTrucksBaseline: checked ? 0 : (cmsContent.activeRoadTrucksBaseline || 1454)
+                                });
+                              }}
+                              className="rounded accent-amber-400 w-4 h-4 cursor-pointer"
+                            />
+                            <span className="text-xs font-bold text-slate-200">
+                              {isPure ? 'إلغاء الزيادات مفعل (صافي)' : 'إلغاء 1454 والاعتماد على الصافي'}
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* 2. Custom Baseline Offset (if pure mode is off) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                          <div>
+                            <label className="block text-slate-300 text-xs font-bold mb-1">
+                              الرقم التأسيسي التراكمي لشاحنات الطرق (Baseline Offset):
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={isPure ? 0 : currentBaseline}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 0;
+                                  setCmsContent({
+                                    ...cmsContent,
+                                    activeRoadTrucksBaseline: val,
+                                    pureDatabaseCountOnly: val === 0
+                                  });
+                                }}
+                                disabled={isPure}
+                                className={`w-36 bg-slate-900 border rounded-xl px-3 py-2 text-xs font-mono font-black focus:outline-hidden ${
+                                  isPure 
+                                    ? 'border-slate-800 text-slate-500 cursor-not-allowed opacity-60' 
+                                    : 'border-emerald-500/50 text-emerald-400 focus:border-emerald-400'
+                                }`}
+                              />
+                              <span className="text-[11px] text-slate-400">
+                                {isPure 
+                                  ? '(معطل لأن وضع العد الصافي مفعل والأساس = 0)' 
+                                  : 'شاحنة أساسية تضاف للرحلات الجارية'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 3. Live Simulator Card: Exact appearance in Hero badge right now */}
+                          <div className="p-3 bg-gradient-to-r from-slate-900 to-slate-950 rounded-xl border border-amber-400/30 flex items-center justify-between gap-3">
+                            <div>
+                              <span className="block text-[11px] text-slate-400 font-bold">
+                                الرقم الذي سيظهر على صورة الشاحنة بالرئيسية الآن:
+                              </span>
+                              <span className="text-[10px] text-slate-500">
+                                عدد الرحلات الجارية حالياً بالنظام: <strong className="text-amber-400 font-mono">{liveTripsCount}</strong>
+                              </span>
+                            </div>
+                            <div className="bg-white/95 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                              <span className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                                <span className="font-mono text-emerald-700 font-black text-sm">{finalDisplayNumber}</span>
+                                <span className="text-[10px] text-slate-600">شاحنة نشطة</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })()}
+
+                  {/* MANUAL CMS METRICS OVERRIDE (when useLiveDatabaseStats is false) */}
+                  {cmsContent.useLiveDatabaseStats === false && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                      <div>
+                        <label className="block text-slate-400 text-xs font-bold mb-1">رحلة نقل مكتملة:</label>
+                        <input
+                          type="text"
+                          value={cmsContent.metricCompletedTrips || ''}
+                          onChange={(e) => setCmsContent({ ...cmsContent, metricCompletedTrips: e.target.value })}
+                          placeholder="مثال: +45,000"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-amber-400 text-xs font-bold focus:border-amber-400 focus:outline-hidden"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 text-xs font-bold mb-1">شاحنة مسجلة ومعتمدة:</label>
+                        <input
+                          type="text"
+                          value={cmsContent.metricRegisteredTrucks || ''}
+                          onChange={(e) => setCmsContent({ ...cmsContent, metricRegisteredTrucks: e.target.value })}
+                          placeholder="مثال: +12,800"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-blue-400 text-xs font-bold focus:border-blue-400 focus:outline-hidden"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 text-xs font-bold mb-1">شاحنة نشطة الآن على الطرق:</label>
+                        <input
+                          type="text"
+                          value={cmsContent.metricActiveRoadTrucks || ''}
+                          onChange={(e) => setCmsContent({ ...cmsContent, metricActiveRoadTrucks: e.target.value })}
+                          placeholder="مثال: +1,455 أو 7"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-emerald-400 text-xs font-bold focus:border-emerald-400 focus:outline-hidden"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 text-xs font-bold mb-1">شركة ومصنع شريك:</label>
+                        <input
+                          type="text"
+                          value={cmsContent.metricPartnerCompanies || ''}
+                          onChange={(e) => setCmsContent({ ...cmsContent, metricPartnerCompanies: e.target.value })}
+                          placeholder="مثال: +3,200"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-purple-400 text-xs font-bold focus:border-purple-400 focus:outline-hidden"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 text-xs font-bold mb-1">نسبة الالتزام بالمواعيد:</label>
+                        <input
+                          type="text"
+                          value={cmsContent.metricOnTimeRate || ''}
+                          onChange={(e) => setCmsContent({ ...cmsContent, metricOnTimeRate: e.target.value })}
+                          placeholder="مثال: 99.4%"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-amber-300 text-xs font-bold focus:border-amber-300 focus:outline-hidden"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
               </form>

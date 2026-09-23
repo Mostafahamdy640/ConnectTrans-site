@@ -23,7 +23,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks: { id: PageId; label: string; badge?: string }[] = [
+  // When logged in: Strictly restricted to requests of all kinds and archive.
+  // When logged out: Full showcase of ConnectTrans mechanism.
+  const navLinks: { id: PageId; label: string; badge?: string }[] = currentUser ? [
+    { id: 'home', label: 'الطلبات بكافة أنواعها', badge: 'حي' },
+    { id: 'orders', label: 'أرشيف وهيستوري النقلات' },
+  ] : [
     { id: 'home', label: 'الرئيسية' },
     { id: 'orders', label: 'الطلبات وتتبع الرحلات', badge: 'مباشر' },
     { id: 'services', label: 'الخدمات' },
@@ -147,22 +152,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 </div>
 
-                {/* Direct Dashboard Link */}
-                {currentUser.role === 'admin' ? (
+                {/* Admin Direct Dashboard Link */}
+                {currentUser.role === 'admin' && (
                   <button
                     onClick={onOpenAdmin}
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition-colors cursor-pointer shadow-xs"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>لوحة الإدارة</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleLinkClick('dashboard')}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    <span>لوحة العمليات</span>
                   </button>
                 )}
 
@@ -181,10 +178,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="login-header-btn"
                   onClick={() => onOpenAuth('login')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
                 >
-                  <LogIn className="w-4 h-4 text-slate-600" />
-                  <span>تسجيل دخول</span>
+                  <LogIn className="w-4 h-4 text-blue-600" />
+                  <span>تسجيل الدخول</span>
                 </button>
 
                 <button
@@ -193,7 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all shadow-sm hover:shadow-md cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>تسجيل جديد</span>
+                  <span>إنشاء حساب جديد</span>
                 </button>
               </div>
             )}
@@ -253,17 +250,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       لوحة الإدارة
                     </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        handleLinkClick('dashboard');
-                      }}
-                      className="px-3 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-lg"
-                    >
-                      لوحة العمليات
-                    </button>
-                  )}
+                  ) : null}
                 </div>
                 <button
                   onClick={() => {

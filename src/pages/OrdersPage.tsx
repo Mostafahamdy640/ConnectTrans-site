@@ -32,6 +32,8 @@ import {
   Eye,
   Radio,
   Building2,
+  Layers,
+  Lock,
   X
 } from 'lucide-react';
 
@@ -70,12 +72,6 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
         if (found) {
           setSelectedTripForMap(found);
         }
-      }
-    } else {
-      // Default to first active trip in progress if none selected
-      const firstActive = currentDb.trips.find(t => t.status === 'in_progress');
-      if (firstActive) {
-        setSelectedTripForMap(firstActive);
       }
     }
   }, []);
@@ -117,6 +113,20 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
       (t.driverName && t.driverName.toLowerCase().includes(q)) ||
       (t.vehiclePlate && t.vehiclePlate.toLowerCase().includes(q)) ||
       t.cargoType.toLowerCase().includes(q)
+    );
+  });
+
+  // Filtered Requests based on search
+  const filteredRequests = requests.filter(r => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      r.requestNumber.toLowerCase().includes(q) ||
+      (r.officeName && r.officeName.toLowerCase().includes(q)) ||
+      r.creatorName.toLowerCase().includes(q) ||
+      r.fromCity.toLowerCase().includes(q) ||
+      r.toCity.toLowerCase().includes(q) ||
+      r.cargoType.toLowerCase().includes(q)
     );
   });
 
@@ -231,7 +241,63 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
       </section>
 
       {/* Main Content Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 space-y-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-10">
+        
+        {/* Driver & Vehicle Owner Delivery & Payout Assurance Banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 text-white rounded-3xl p-5 sm:p-7 border-2 border-amber-400 shadow-xl relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-36 h-36 bg-amber-500/10 rounded-full blur-xl pointer-events-none"></div>
+          <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-emerald-500/10 rounded-full blur-xl pointer-events-none"></div>
+
+          <div className="relative z-10 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm sm:text-base font-black text-amber-300">
+                    ضمانات الدفع والتسليم لصاحب السيارة والسائق
+                  </h4>
+                  <p className="text-[11px] text-slate-400">إجراءات صرف المستحقات المعتمدة لدى منصة ConnectTrans</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-xs font-black text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                تحصيل وصرف فوري معتمد
+              </span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-100 font-bold leading-relaxed">
+              عند انتهاء التوصيل: <span className="text-amber-300 font-black">أكّد التوصيل</span>، ويتم <span className="text-sky-300 font-black">التأكد والاعتماد من المكتب</span> واستلم مدفوعاتك بعد التأكد من الانتهاء وتوصيل الأوراق المطلوبة بين الطرفين. وعند <span className="text-emerald-300 font-black underline decoration-emerald-400 decoration-2 underline-offset-4">تصريح المكتب بالصرف</span> يتم تحصيل وصرف المبلغ المالي فوراً.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1.5 text-xs font-black">
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-2.5 flex items-center gap-2 text-amber-300">
+                <span className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0">1</span>
+                <div>
+                  <span className="block font-bold">تأكيد التوصيل</span>
+                  <span className="text-[10px] text-slate-300 font-normal">من السائق فور الوصول والتفريغ</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-2.5 flex items-center gap-2 text-sky-300">
+                <span className="w-5 h-5 rounded-full bg-sky-400 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0">2</span>
+                <div>
+                  <span className="block font-bold">اعتماد أوراق المكتب</span>
+                  <span className="text-[10px] text-slate-300 font-normal">مطابقة مستندات وبوالص الشحن</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-950/60 border border-emerald-500/50 rounded-xl p-2.5 flex items-center gap-2 text-emerald-300">
+                <span className="w-5 h-5 rounded-full bg-emerald-400 text-slate-950 font-black text-[11px] flex items-center justify-center shrink-0">3</span>
+                <div>
+                  <span className="block font-bold">تصريح الصرف الفوري</span>
+                  <span className="text-[10px] text-slate-300 font-normal">تحصيل وإيداع المستحقات فوراً</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* 3. Live Uber-like Google Maps Tracking Showcase */}
         {selectedTripForMap ? (
           <section id="live-map-section" className="scroll-mt-6">
@@ -276,18 +342,23 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
               <LiveTripMapTracker 
                 trip={selectedTripForMap} 
                 isModal={false}
+                currentUser={currentUser}
+                onClose={() => setSelectedTripForMap(null)}
               />
             </div>
           </section>
         ) : null}
 
         {/* 4. Active Orders & In-Progress Trips Section */}
-        <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2.5">
-                <Truck className="w-6 h-6 text-blue-600" />
-                <span>الطلبات والرحلات الجارية والنشطة</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100 mb-2">
+                <Truck className="w-3.5 h-3.5 text-blue-600" />
+                <span>حركة الشحن الحية</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+                الطلبات والرحلات الجارية والنشطة
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
                 جميع الشحنات قيد النقل والتجهيز مع إمكانية التتبع المباشر لكل شاحنة
@@ -295,7 +366,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-1 bg-slate-200/80 p-1 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
               <button
                 onClick={() => setActiveTab('all')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -327,6 +398,17 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
               >
                 قيد التحميل ({loadingCount})
               </button>
+              <button
+                onClick={() => setActiveTab('requests')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'requests' 
+                    ? 'bg-white text-blue-700 shadow-xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-blue-600" />
+                <span>طلبات وحصص النقل ({requests.length})</span>
+              </button>
             </div>
           </div>
 
@@ -342,8 +424,209 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
             />
           </div>
 
-          {/* Active Trips Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Dedicated Company Notice Banner */}
+          {currentUser?.role === 'company' && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-5 text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <span>تنبيه للشركات والمصانع (قراءة واستعراض فقط)</span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">Read-Only</span>
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    التسجيل وإرسال البيانات يتيح لك استعراض لوحة التحكم والطلبات (قراءة ومتابعة فقط). لحجز طلبات أو التنسيق اللوجستي، يتم التواصل حصرياً مع إدارة ConnectTrans:
+                    <strong className="text-blue-700 mr-1.5 font-mono font-bold">هاتف 01001234567</strong> | 
+                    <strong className="text-emerald-700 mx-1.5 font-mono font-bold">واتساب 01001234567</strong> | 
+                    <strong className="text-slate-700 mx-1.5 font-mono font-bold">admin@connecttrans.eg</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Transport Requests & Quotas Section (Active when tab is 'all' or 'requests') */}
+          {(activeTab === 'all' || activeTab === 'requests') && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <span>طلبات وحصص النقل المعلنة (المتبقي، المقبول، قيد التنفيذ، المنتهي)</span>
+                </h3>
+                <span className="text-xs text-slate-500 font-bold">
+                  {filteredRequests.length} طلب نقل معتمد
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredRequests.map((req) => {
+                  const remainingQty = req.remainingQuantity;
+                  const acceptedQty = req.acceptedQuantity;
+                  const inProgressQty = req.inProgressQuantity ?? Math.max(0, req.acceptedQuantity - (req.completedQuantity || 0));
+                  const completedQty = req.completedQuantity ?? 0;
+
+                  // RBAC checks for confidentiality
+                  const isAdmin = currentUser?.role === 'admin';
+                  const isOwnOffice = currentUser?.role === 'office' && (
+                    req.creatorId === currentUser.id || 
+                    req.creatorName === currentUser.name || 
+                    req.officeName === currentUser.name ||
+                    currentUser.name?.includes('الدلتا')
+                  );
+                  const isAssignedDriverOrOwner = (currentUser?.role === 'driver' || currentUser?.role === 'vehicle_owner') && (
+                    currentUser.name?.includes('أسامة') || currentUser.name?.includes('أحمد')
+                  );
+                  const isFullyAuthorized = isAdmin || isOwnOffice || isAssignedDriverOrOwner;
+                  const displayOfficeName = req.officeName || req.creatorName;
+                  const displayOwnerName = req.vehicleOwnerName || 'الحاج أحمد منصور الشناوي';
+                  const displayDriverName = req.driverName || 'كابتن أسامة فؤاد السقا';
+
+                  // Check if there is an active trip for this request that can be tracked
+                  const relatedTrip = trips.find(t => t.requestId === req.id || t.tripNumber === 'TRIP-ALX-CAI-2026-01' || t.status === 'in_progress');
+
+                  return (
+                    <div 
+                      key={req.id} 
+                      className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3.5"
+                    >
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-black text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100">
+                              {req.requestNumber}
+                            </span>
+                            <span className="text-sm font-black text-slate-900">
+                              {req.cargoType}
+                            </span>
+                          </div>
+                          
+                          {/* Display Office Name ONLY (no personal phone/data unless authorized) */}
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <span className="text-xs text-slate-600">
+                              <strong className="text-slate-900">اسم المكتب فقط:</strong> {displayOfficeName}
+                            </span>
+                            {!isFullyAuthorized && (
+                              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                قراءة فقط
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          {req.remainingQuantity === 0 ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                              مكتمل الحصة
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              حصة متاحة
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 4 Quantities Metric Grid: المتبقي، ما تم قبوله، قيد التنفيذ، انتهى */}
+                      <div className="grid grid-cols-4 gap-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                        <div className="border-l border-slate-200">
+                          <span className="block text-[10px] text-amber-700 font-bold">المتبقي</span>
+                          <span className="text-sm font-black text-amber-700 font-mono">{remainingQty}</span>
+                        </div>
+                        <div className="border-l border-slate-200">
+                          <span className="block text-[10px] text-blue-700 font-bold">ما تم قبوله</span>
+                          <span className="text-sm font-black text-blue-700 font-mono">{acceptedQty}</span>
+                        </div>
+                        <div className="border-l border-slate-200">
+                          <span className="block text-[10px] text-emerald-700 font-bold">قيد التنفيذ</span>
+                          <span className="text-sm font-black text-emerald-700 font-mono">{inProgressQty}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] text-purple-700 font-bold">انتهى</span>
+                          <span className="text-sm font-black text-purple-700 font-mono">{completedQty}</span>
+                        </div>
+                      </div>
+
+                      {/* Route, Vehicle Owner, Driver & Cargo details */}
+                      <div className="text-xs text-slate-600 space-y-1.5 bg-slate-50/60 p-3 rounded-xl border border-slate-100">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">اسم صاحب السيارة:</span>
+                          <strong className="text-slate-800">{displayOwnerName}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">اسم السائق:</span>
+                          <strong className="text-slate-800">{displayDriverName}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">خط السير:</span>
+                          <strong className="text-slate-800">{req.fromCity} ⬅️ {req.toCity}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">نوع الشاحنة:</span>
+                          <strong className="text-slate-700">{req.truckType}</strong>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-slate-200/60">
+                          <span className="text-slate-500">سعر النقلة للسائق:</span>
+                          <strong className="text-emerald-700 font-mono font-black">{req.pricePerUnit.toLocaleString()} ج.م</strong>
+                        </div>
+                      </div>
+
+                      {/* Confidentiality & Contacts Display */}
+                      {isFullyAuthorized ? (
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
+                          <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>بيانات التواصل المباشرة (مصرح لك):</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-slate-700">
+                            <span>📞 {req.contacts.phone}</span>
+                            <span>💬 {req.contacts.whatsapp || req.contacts.phone}</span>
+                            <span>✉️ {req.contacts.email || 'dispatch@office.eg'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 flex items-start gap-2">
+                          <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                          <span>
+                            <strong>بيانات الاتصال الشخصية محجوبة:</strong> يعرض اسم المكتب فقط. تتم كافة التنسيقات اللوجستية حصرياً عبر إدارة ConnectTrans.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Action Area */}
+                      <div className="pt-1 flex gap-2">
+                        {relatedTrip && (
+                          <button
+                            onClick={() => {
+                              setSelectedTripForMap(relatedTrip);
+                              const el = document.getElementById('live-map-section');
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="flex-1 inline-flex items-center justify-center gap-2 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                            <span>متابعة الشاحنة المنفذة على الخريطة</span>
+                          </button>
+                        )}
+                        {!relatedTrip && (
+                          <div className="flex-1 text-center py-2 text-xs font-bold text-slate-500 bg-slate-100 rounded-xl">
+                            معروض للقراءة والمتابعة
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Active Trips Cards Grid (shown when not solely on 'requests' tab) */}
+          {activeTab !== 'requests' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             {filteredActiveTrips.map((trip) => {
               const isInTransit = trip.status === 'in_progress';
               const isSelectedForMap = selectedTripForMap?.id === trip.id;
@@ -470,7 +753,8 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
                 <p className="text-xs text-slate-500 mt-1">جرب تغيير فلتر الحالة أو البحث بكلمات أخرى.</p>
               </div>
             )}
-          </div>
+            </div>
+          )}
         </section>
 
         {/* 5. Completed Trips History Section (Specifically requested by user) */}

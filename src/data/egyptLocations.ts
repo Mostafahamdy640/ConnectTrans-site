@@ -436,13 +436,39 @@ export const INITIAL_USERS: UserAccount[] = [
   }
 ];
 
-// Default site editable content for Admin CMS
+// Default site editable content for Admin CMS (Every text word is editable by Admin)
 export const INITIAL_SITE_CONTENT: SitePageContent = {
   id: 'site-egypt-01',
   title: 'منصة ConnectTrans مصر للنقل واللوجستيات',
-  heroHeadline: 'منظومة نقل البضائع الأذكى والأسرع في محافظات وقرى مصر',
-  heroSubheadline: 'ربط مباشر بين المصانع والشركات التجارية مع مكاتب النقل وأصحاب الشاحنات والسيارات بدون وسطاء معقدين - مجاني بالكامل خلال الفترة التجريبية',
-  announcement: 'عمولة مجانية خلال الفترة التجريبية',
+  heroHeadline: 'منصة واحدة لإدارة متكاملة',
+  heroSecondLine: 'لكافة محافظات وقرى مصر',
+  heroSubheadline: 'كل رحلاتك .. كل شحناتك .. وعمولة مجانية بالكامل خلال الفترة التجريبية في مكان واحد',
+  heroBadgeText: 'لإدارة النقل والخدمات اللوجستية والشاحنات',
+  heroStartBtnText: 'إبدأ الآن',
+  heroExploreBtnText: 'اكتشف المزيد',
+  announcement: 'عمولة مجانية 0% خلال الفترة التجريبية لمنصة ConnectTrans لكافة الأطراف',
   emergencyPhone: '01001234567',
-  vatNumber: 'سجل ضريبي مصري: 849-210-441'
+  officialEmail: 'admin@connecttrans.eg',
+  officialWhatsApp: '01001234567',
+  officialAddress: 'القاهرة الجديدة، التجمع الخامس، مبنى الأعمال اللوجستية',
+  vatNumber: 'سجل تجاري: 1098234-EG | بطاقة ضريبية: 882-910-334',
+  aboutHeadline: 'منظومة لوجستية رقمية متطورة تخدم شريان التجارة والصناعة في مصر',
+  aboutDescription: 'نربط الشركات والمصانع بمكاتب النقل المعتمدة وأصحاب الشاحنات الأفراد بأمان ومصداقية كاملة مع توثيق إلكتروني ومتابعة لحظية.',
+  servicesHeadline: 'حلول وخدمات النقل اللوجستي المخصصة لكافة القطاعات',
+  companyPortalTitle: 'بوابة الشركات والمصانع التجارية (قراءة ومتابعة وتواصل مع الإدارة فقط)',
+  companyContactNotice: 'وسائل التواصل المتاحة للشركات تقتصر حصرياً على إدارة منصة ConnectTrans المركزية لحماية العقود وحوكمة عمليات الشحن.',
+  officePortalTitle: 'بوابة مكاتب النقل والوساطة المعتمدة',
+  officePortalNotice: 'الطلبات العامة متاحة للقراءة وإحصائيات الحصص، بينما تظهر الداتا الكاملة وأدوات التحكم حصرياً للطلبات المنشورة بواسطة مكتبكم.',
+  driverPortalTitle: 'بوابة أصحاب السيارات والسائقين (حمولة وضمان عودة محملة)',
+  driverPortalNotice: 'الطلبات العامة متاحة للقراءة، وتظهر بيانات البوليصة والتواصل وإثبات التسليم للرحلات المسندة لسيارتكم وسائقكم فقط.',
+  footerAbout: 'منصة النقل والخدمات اللوجستية الرائدة في جمهورية مصر العربية. ربط موثوق، أسعار عادلة، وتتبع دقيق لكافة الرحلات.',
+  footerCopyright: 'جميع الحقوق محفوظة © 2026 ConnectTrans Egypt. مسجلة رسمياً بالهيئة العامة للاستثمار والمناطق الحرة.',
+  useLiveDatabaseStats: true,
+  pureDatabaseCountOnly: false,
+  activeRoadTrucksBaseline: 1454,
+  metricCompletedTrips: '',
+  metricRegisteredTrucks: '',
+  metricActiveRoadTrucks: '',
+  metricPartnerCompanies: '',
+  metricOnTimeRate: ''
 };

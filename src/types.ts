@@ -73,9 +73,17 @@ export interface VehicleOwnerAccount {
   city: string;
   status: AccountStatus;
   documents: VerificationDocument[];
+  walletBalance?: number;
   createdAt: string;
   notes?: string;
 }
+
+// Entity Type Aliases
+export type CompanyEntity = CompanyAccount;
+export type VehicleOwnerEntity = VehicleOwnerAccount;
+export type TransportOffice = TransportOfficeAccount;
+export type VehicleEntity = Vehicle;
+export type DriverEntity = Driver;
 
 // 4. Vehicle Entity
 export interface Vehicle {
@@ -164,6 +172,7 @@ export interface TransportRequest {
   creatorId: string;
   creatorType: 'company' | 'office';
   creatorName: string;
+  officeName?: string;
   creatorGovernorate: string;
   creatorCity: string;
   requestType: RequestType;
@@ -180,11 +189,15 @@ export interface TransportRequest {
   requiredQuantity: number;
   remainingQuantity: number;
   acceptedQuantity: number;
+  inProgressQuantity?: number;
+  completedQuantity?: number;
   offersCount?: number;
   status: RequestStatus;
   notes?: string;
   createdAt: string;
   closedAt?: string;
+  vehicleOwnerName?: string;
+  driverName?: string;
   // Contact details only released upon acceptance
   contacts: ContactDetails;
 }
@@ -270,6 +283,16 @@ export interface Trip {
   completedAt?: string;
   ratedByShipper?: boolean;
   ratedByTransporter?: boolean;
+  // Delivery Confirmation & Payout Workflow between Driver, Office, and Transporter
+  driverDeliveryConfirmed?: boolean;
+  driverDeliveryConfirmedAt?: string;
+  driverDeliveryNotes?: string;
+  officeVerifiedDocs?: boolean;
+  officeVerifiedDocsAt?: string;
+  officePayoutAuthorized?: boolean;
+  officePayoutAuthorizedAt?: string;
+  payoutStatus?: 'pending_delivery' | 'pending_office_approval' | 'authorized_for_payout' | 'paid_out';
+  payoutAmount?: number;
 }
 
 // 9. Rating Entity (Enabled only AFTER Trip is completed)
@@ -310,8 +333,18 @@ export interface AuditLog {
   actorId: string;
   actorName: string;
   actorRole: string;
-  action: 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'APPROVE' | 'REJECT' | 'SUSPEND' | 'DELETE' | 'EDIT' | 'CREATE_REQUEST' | 'ACCEPT_REQUEST' | 'SUBMIT_OFFER' | 'ACCEPT_OFFER' | 'CREATE_TRIP' | 'COMPANY_DIRECT_INQUIRY' | 'REVIEW_COMPANY_INQUIRY' | 'INPUT_AGREED_TRANSPORT_ORDER' | 'CLOSE_REQUEST' | 'RELEASE_CONTACTS' | 'CHANGE_FEE' | 'UPDATE_TRIP' | 'COMPLETE_TRIP' | 'RATE_TRIP' | 'BACKUP_CREATED' | 'BACKUP_RESTORED';
-  entity: 'user' | 'company' | 'office' | 'vehicle_owner' | 'vehicle' | 'driver' | 'request' | 'offer' | 'acceptance' | 'trip' | 'fee_profile' | 'rating' | 'system';
+  action: 
+    | 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'APPROVE' | 'REJECT' | 'SUSPEND' | 'DELETE' | 'EDIT' 
+    | 'CREATE_REQUEST' | 'ACCEPT_REQUEST' | 'SUBMIT_OFFER' | 'ACCEPT_OFFER' | 'CREATE_TRIP' 
+    | 'COMPANY_DIRECT_INQUIRY' | 'REVIEW_COMPANY_INQUIRY' | 'INPUT_AGREED_TRANSPORT_ORDER' 
+    | 'CLOSE_REQUEST' | 'RELEASE_CONTACTS' | 'CHANGE_FEE' | 'UPDATE_TRIP' | 'COMPLETE_TRIP' 
+    | 'RATE_TRIP' | 'BACKUP_CREATED' | 'BACKUP_RESTORED' | 'CONFIRM_DELIVERY' | 'VERIFY_DOCS' 
+    | 'AUTHORIZE_PAYOUT' | 'UPDATE_OFFICE' | 'CREATE_OFFICE' | 'DELETE_OFFICE' | 'UPDATE_COMPANY' 
+    | 'CREATE_COMPANY' | 'DELETE_COMPANY' | 'UPDATE_OWNER' | 'CREATE_OWNER' | 'DELETE_OWNER' 
+    | 'UPDATE_VEHICLE' | 'CREATE_VEHICLE' | 'DELETE_VEHICLE' | 'UPDATE_DRIVER' | 'CREATE_DRIVER' 
+    | 'DELETE_DRIVER' | 'UPDATE_REQUEST' | 'DELETE_REQUEST' | 'EDIT_REQUEST' | 'UPDATE_TRIP_DETAILS' 
+    | 'DELETE_TRIP' | (string & {});
+  entity: 'user' | 'company' | 'office' | 'vehicle_owner' | 'vehicle' | 'driver' | 'request' | 'offer' | 'acceptance' | 'trip' | 'fee_profile' | 'rating' | 'system' | (string & {});
   entityId: string;
   oldValue?: string;
   newValue?: string;
@@ -360,10 +393,40 @@ export interface SitePageContent {
   id: string;
   title: string;
   heroHeadline: string;
+  heroSecondLine: string;
   heroSubheadline: string;
+  heroBadgeText: string;
+  heroStartBtnText: string;
+  heroExploreBtnText: string;
   announcement: string;
   emergencyPhone: string;
+  officialEmail: string;
+  officialWhatsApp: string;
+  officialAddress: string;
   vatNumber: string;
+  // About & services
+  aboutHeadline: string;
+  aboutDescription: string;
+  servicesHeadline: string;
+  // Role portal texts
+  companyPortalTitle: string;
+  companyContactNotice: string;
+  officePortalTitle: string;
+  officePortalNotice: string;
+  driverPortalTitle: string;
+  driverPortalNotice: string;
+  // Footer
+  footerAbout: string;
+  footerCopyright: string;
+  // Real Operational Trust Metrics
+  metricCompletedTrips?: string;
+  metricRegisteredTrucks?: string;
+  metricActiveRoadTrucks?: string;
+  metricPartnerCompanies?: string;
+  metricOnTimeRate?: string;
+  useLiveDatabaseStats?: boolean;
+  pureDatabaseCountOnly?: boolean; // When true: strictly database pure counts without pre-accumulated baseline (e.g. 7 trucks will show 7 only)
+  activeRoadTrucksBaseline?: number; // Configurable baseline offset (defaults to 1454, or 0 if disabled)
 }
 
 export interface Shipment {

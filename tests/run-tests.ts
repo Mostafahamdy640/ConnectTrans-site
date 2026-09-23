@@ -5,7 +5,93 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { memoryDb } from '../src/db/memoryStore';
+
+// Self-contained test fixture database for standalone test runner
+class TestMemoryDb {
+  private tables: Record<string, any[]> = {
+    users: [],
+    transport_requests: [],
+    office_offers: [],
+    request_acceptances: [],
+    trips: [],
+    ratings: [],
+    wallet_transactions: [],
+  };
+
+  public getTable(name: string): any[] {
+    if (!this.tables[name]) {
+      this.tables[name] = [];
+    }
+    return this.tables[name];
+  }
+
+  public async initSeed() {
+    this.tables.users = [
+      { uid: 'admin', role: 'admin', name: 'ConnectTrans Admin', email: 'admin@connecttrans.eg', walletBalance: '0' },
+      { uid: 'office-delta-transport', role: 'office', name: 'مكتب الدلتا للشحن', email: 'delta@connecttrans.eg', walletBalance: '25000' },
+      { uid: 'comp-suez-steel', role: 'company', name: 'شركة السويس للصلب', email: 'shipping@suez-steel.eg', walletBalance: '80000' },
+      { uid: 'drv-101', role: 'driver', name: 'أسامة السقا', email: 'osama@connecttrans.eg', rating: '4.9', walletBalance: '3500' },
+      { uid: 'owner-ahmed', role: 'vehicle_owner', name: 'الحاج أحمد منصور', email: 'ahmed@connecttrans.eg', walletBalance: '12000' },
+      { uid: 'comp-el-araby', role: 'company', name: 'مجموعة العربي', email: 'logistics@elaraby.eg', walletBalance: '45000' },
+      { uid: 'drv-102', role: 'driver', name: 'محمود الصاوي', email: 'sawi@connecttrans.eg', rating: '4.8', walletBalance: '2100' },
+    ];
+
+    this.tables.transport_requests = [
+      {
+        id: 'req-1001',
+        requestNumber: 'REQ-2026-001',
+        creatorId: 'comp-suez-steel',
+        creatorName: 'شركة السويس للصلب',
+        cargoType: 'حديد تسليح أطوال',
+        requiredQuantity: 5,
+        remainingQuantity: 5,
+        acceptedQuantity: 0,
+        pricePerUnit: '4800.00',
+        status: 'open',
+      },
+      {
+        id: 'req-1002',
+        requestNumber: 'REQ-2026-002',
+        creatorId: 'comp-el-araby',
+        creatorName: 'مجموعة العربي',
+        cargoType: 'أجهزة كهربائية',
+        requiredQuantity: 2,
+        remainingQuantity: 2,
+        acceptedQuantity: 0,
+        pricePerUnit: '3500.00',
+        status: 'open',
+      }
+    ];
+
+    this.tables.trips = [
+      {
+        id: 'trip-501',
+        tripNumber: 'TRIP-EG-9102',
+        status: 'in_progress',
+        progressPercent: 45,
+        latitude: '30.0444',
+        longitude: '31.2357',
+        currentLocation: 'ميدان الرماية',
+        price: '4800.00',
+      },
+      {
+        id: 'trip-502',
+        tripNumber: 'TRIP-EG-8044',
+        status: 'completed',
+        progressPercent: 100,
+        currentLocation: 'ميناء الإسكندرية',
+        price: '4100.00',
+      }
+    ];
+
+    this.tables.office_offers = [];
+    this.tables.request_acceptances = [];
+    this.tables.wallet_transactions = [];
+    this.tables.ratings = [];
+  }
+}
+
+const memoryDb = new TestMemoryDb();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'connecttrans-secure-jwt-secret-2026-production';
 

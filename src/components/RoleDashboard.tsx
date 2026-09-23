@@ -340,7 +340,7 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
         {/* Tab 2: Request Lifecycle Manager */}
         {selectedTab === 'live_requests' && (
           <div className="space-y-6">
-            <RequestLifecycleManager />
+            <RequestLifecycleManager currentUser={userAccount} />
           </div>
         )}
 
