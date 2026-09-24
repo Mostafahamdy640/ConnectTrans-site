@@ -8,7 +8,7 @@ export interface AuthenticatedUserPayload {
   uid: string;
   email: string;
   phone: string;
-  role: 'admin' | 'supervisor' | 'company' | 'office' | 'vehicle_owner' | 'driver';
+  role: 'admin' | 'supervisor' | 'company' | 'office' | 'vehicle_owner' | 'driver' | 'finance';
   name: string;
   permissions?: string[];
 }

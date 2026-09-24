@@ -3,12 +3,14 @@ import {
   Building2, Briefcase, Truck, ArrowLeft, CheckCircle2, 
   MapPin, ShieldCheck, DollarSign, Calendar, Clock, 
   Search, Plus, Eye, Navigation, Phone, Check, RefreshCw,
-  LogOut, Lock
+  LogOut, Lock, Edit3, X, UserCheck, CreditCard, Smartphone, Wallet, ArrowDownLeft, ArrowUpRight
 } from 'lucide-react';
 import { UserRole, UserAccount, Shipment, CommissionProfile } from '../types';
 import { calculateTripCommission } from '../data/egyptLocations';
 import { RequestLifecycleManager } from './RequestLifecycleManager';
 import { ConnectTransWorkflowManager } from './ConnectTransWorkflowManager';
+import { FinancialAdministrationManager } from './FinancialAdministrationManager';
+import { PaymentOperationsManager } from './PaymentOperationsManager';
 
 interface RoleDashboardProps {
   currentRole: UserRole;
@@ -21,6 +23,7 @@ interface RoleDashboardProps {
   onOpenAdmin?: () => void;
   onLogout?: () => void;
   onRequireLogin?: (role?: UserRole) => void;
+  onUpdateUserAccount?: (user: UserAccount) => void;
 }
 
 export const RoleDashboard: React.FC<RoleDashboardProps> = ({
@@ -34,10 +37,71 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
   onOpenAdmin,
   onLogout,
   onRequireLogin,
+  onUpdateUserAccount,
 }) => {
-  const [selectedTab, setSelectedTab] = useState<'available' | 'my_trips' | 'wallet' | 'live_requests' | 'workflow'>('workflow');
+  const [selectedTab, setSelectedTab] = useState<'available' | 'my_trips' | 'wallet' | 'live_requests' | 'workflow' | 'finance_treasury'>('workflow');
   const [governorateFilter, setGovernorateFilter] = useState('all');
   const [simulatedAcceptedId, setSimulatedAcceptedId] = useState<string | null>(null);
+
+  // Profile alias edit state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [aliasInput, setAliasInput] = useState(userAccount?.displayName || '');
+  const [showAliasInput, setShowAliasInput] = useState(Boolean(userAccount?.showAlias));
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
+
+  // Digital Payment & Escrow Wallet States
+  const [isPayFreightModalOpen, setIsPayFreightModalOpen] = useState(false);
+  const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
+  const [payGross, setPayGross] = useState<number>(4000);
+  const [payCommission, setPayCommission] = useState<number>(500);
+  const [payMethod, setPayMethod] = useState<'visa_mastercard' | 'meeza' | 'vodafone_cash' | 'instapay'>('visa_mastercard');
+  const [paySuccessMsg, setPaySuccessMsg] = useState<string | null>(null);
+  const [payoutAmountInput, setPayoutAmountInput] = useState<number>(1500);
+  const [payoutMethodChoice, setPayoutMethodChoice] = useState<'instapay' | 'vodafone_cash' | 'bank'>('instapay');
+  const [payoutTargetAddress, setPayoutTargetAddress] = useState('driver@instapay');
+  const [payoutSuccessMsg, setPayoutSuccessMsg] = useState<string | null>(null);
+  const [isWalletActionLoading, setIsWalletActionLoading] = useState(false);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userAccount) return;
+    setProfileSaving(true);
+    try {
+      const token = localStorage.getItem('ct_auth_token');
+      const res = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          displayName: aliasInput.trim(),
+          showAlias: showAliasInput
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const updated: UserAccount = {
+          ...userAccount,
+          displayName: aliasInput.trim() || undefined,
+          showAlias: showAliasInput
+        };
+        if (onUpdateUserAccount) {
+          onUpdateUserAccount(updated);
+        }
+        setProfileSuccessMsg('تم حفظ الاسم المستعار وتفضيلات الخصوصية بنجاح!');
+        setTimeout(() => {
+          setProfileSuccessMsg(null);
+          setIsEditingProfile(false);
+        }, 1200);
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   // Role Metadata
   const roleConfigs = {
@@ -68,6 +132,27 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
       badgeBg: 'bg-blue-100 text-blue-900 border-blue-300',
       icon: Truck,
       description: 'تصفح عروض مكاتب النقل، قبول الشحنات وتحديد الكمية، وتجنب السير فارغاً مع سداد فوري.',
+    },
+    vehicle_owner: {
+      title: 'بوابة مالك السيارة والشاحنات',
+      badge: 'مالك أسطول / شاحنة',
+      badgeBg: 'bg-indigo-100 text-indigo-900 border-indigo-300',
+      icon: Truck,
+      description: 'إدارة أسطول الشاحنات ومتابعة الأرباح والتحويلات اللحظية للسائقين.',
+    },
+    finance: {
+      title: 'الإدارة المالية والخزانة والتحرير',
+      badge: 'إدارة مالية ومراقب حسابات',
+      badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      icon: DollarSign,
+      description: 'التدقيق المالي، تحرير مستحقات الضمان للسائقين بعد تصريح المكاتب، وتجميد الصرف عند المخالفات.',
+    },
+    supervisor: {
+      title: 'بوابة مشرف التشغيل والعمليات',
+      badge: 'مشرف تشغيل',
+      badgeBg: 'bg-blue-100 text-blue-900 border-blue-300',
+      icon: UserCheck,
+      description: 'متابعة حركة الشاحنات على الطرق، التحقق من مستندات الشحن، ومراقبة جودة الخدمة.',
     },
   };
 
@@ -139,14 +224,30 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
               <currentConfig.icon className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-slate-900">{userAccount.name}</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-black text-slate-900">
+                  {userAccount.showAlias && userAccount.displayName ? userAccount.displayName : userAccount.name}
+                </h1>
+                {userAccount.showAlias && userAccount.displayName && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                    اسم مستعار
+                  </span>
+                )}
                 <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${currentConfig.badgeBg}`}>
                   {currentConfig.badge}
                 </span>
-                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-mono">
-                  {userAccount.phone}
-                </span>
+                <button
+                  onClick={() => {
+                    setAliasInput(userAccount.displayName || '');
+                    setShowAliasInput(Boolean(userAccount.showAlias));
+                    setIsEditingProfile(true);
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-slate-300"
+                  title="تعديل الاسم المستعار والخصوصية"
+                >
+                  <Edit3 className="w-3 h-3 text-slate-500" />
+                  <span>الاسم المستعار والخصوصية</span>
+                </button>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
                 {userAccount.governorate} — {userAccount.city || 'المنطقة الصناعية'} | حالة التوثيق: معتمد رسمياً
@@ -184,6 +285,14 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
                   }`}
                 >
                   صاحب سيارة
+                </button>
+                <button
+                  onClick={() => onSwitchRole('finance')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    currentRole === 'finance' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  المالية
                 </button>
                 <button
                   onClick={() => onSwitchRole('admin')}
@@ -323,8 +432,20 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            محفظة المعاملات والمستحقات
+            عمليات الدفع والضمان المالي (Escrow)
           </button>
+          {(currentRole === 'finance' || currentRole === 'admin') && (
+            <button
+              onClick={() => setSelectedTab('finance_treasury')}
+              className={`pb-3 text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap border-b-2 ${
+                selectedTab === 'finance_treasury'
+                  ? 'border-emerald-600 text-emerald-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              الإدارة المالية والخزانة والتحرير
+            </button>
+          )}
         </div>
 
         {/* Tab 1: Workflow Manager (Scoped to current user) */}
@@ -485,55 +606,380 @@ export const RoleDashboard: React.FC<RoleDashboardProps> = ({
           </div>
         )}
 
-        {/* Tab 4: Wallet & Balances */}
+        {/* Tab 4: Wallet & Balances & Escrow Operations */}
         {selectedTab === 'wallet' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-lg font-black text-slate-900">محفظة المعاملات والمستحقات المالية</h3>
-                <p className="text-xs text-slate-500">حسابك المالي ورصيد التحويلات الفورية لبنك مصر / فودافون كاش / إنستاباي</p>
-              </div>
-              <div className="text-right bg-emerald-50 border border-emerald-200 px-5 py-3 rounded-2xl">
-                <span className="text-xs text-emerald-800 font-bold block">الرصيد المتاح للسحب الفوري:</span>
-                <span className="text-2xl font-black text-emerald-700 font-mono">
-                  {(userAccount.walletBalance || 4850).toLocaleString()} ج.م
-                </span>
-              </div>
-            </div>
+          <PaymentOperationsManager currentUser={userAccount} />
+        )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <span className="text-xs text-slate-500 block mb-1">إجمالي الرحلات المنفذة</span>
-                <span className="text-xl font-black text-slate-900 font-mono">
-                  {userAccount.completedTrips || 24} رحلة
-                </span>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <span className="text-xs text-slate-500 block mb-1">التقييم العام للأداء</span>
-                <span className="text-xl font-black text-amber-500 font-mono flex items-center gap-1">
-                  ★ {userAccount.rating || 4.9} / 5.0
-                </span>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <span className="text-xs text-slate-500 block mb-1">معدل التزام العمولة</span>
-                <span className="text-xl font-black text-emerald-600 font-mono">
-                  100% منتظم
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 flex gap-3">
-              <button
-                onClick={() => alert('تم طلب سحب الأرباح بنجاح عبر InstaPay!')}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer"
-              >
-                طلب تحويل عبر InstaPay أو المحافظ الإلكترونية
-              </button>
-            </div>
-          </div>
+        {/* Tab 5: Financial Administration & Treasury */}
+        {selectedTab === 'finance_treasury' && (
+          <FinancialAdministrationManager currentUser={userAccount} />
         )}
 
       </div>
+
+      {/* Pay Freight / Deposit Escrow Modal */}
+      {isPayFreightModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">سداد وتأمين مستحقات النقلة (Escrow)</h3>
+                  <span className="text-[11px] text-slate-500">دفع إلكتروني مشفر عبر شبكة البنك المركزي المصري</span>
+                </div>
+              </div>
+              <button
+                onClick={() => { setIsPayFreightModalOpen(false); setPaySuccessMsg(null); }}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {paySuccessMsg ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                <p className="text-xs font-black text-emerald-900">{paySuccessMsg}</p>
+                <button
+                  onClick={() => { setIsPayFreightModalOpen(false); setPaySuccessMsg(null); }}
+                  className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl mt-2 cursor-pointer"
+                >
+                  إغلاق
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">إجمالي سعر النقلة المعروض:</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={payGross}
+                        onChange={(e) => setPayGross(Number(e.target.value) || 0)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 focus:outline-hidden focus:border-blue-600"
+                      />
+                      <span className="absolute left-3 top-2.5 text-xs text-slate-400">ج.م</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">عمولة المنصة المقررة:</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={payCommission}
+                        onChange={(e) => setPayCommission(Number(e.target.value) || 0)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-amber-600 focus:outline-hidden focus:border-blue-600"
+                      />
+                      <span className="absolute left-3 top-2.5 text-xs text-slate-400">ج.م</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs font-bold">
+                  <span className="text-blue-900">المحتجز بالضمان لصالح السائق:</span>
+                  <span className="text-blue-700 font-mono text-sm font-black">
+                    {Math.max(0, payGross - payCommission).toLocaleString()} ج.م
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">اختر وسيلة الدفع الإلكتروني:</label>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      { id: 'visa_mastercard', label: 'فيزا وماستركارد', sub: 'دفع بالبطاقة البنكية' },
+                      { id: 'meeza', label: 'كارت ميزة', sub: 'البطاقة الوطنية' },
+                      { id: 'vodafone_cash', label: 'فودافون كاش والمحافظ', sub: 'محافظ المحمول' },
+                      { id: 'instapay', label: 'إنستاباي InstaPay', sub: 'تحويل لحظي' },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setPayMethod(m.id as any)}
+                        className={`p-2.5 rounded-xl border text-right transition-all cursor-pointer ${
+                          payMethod === m.id
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="block font-bold">{m.label}</span>
+                        <span className="block text-[10px] opacity-80">{m.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isWalletActionLoading}
+                  onClick={async () => {
+                    setIsWalletActionLoading(true);
+                    try {
+                      const token = localStorage.getItem('ct_auth_token');
+                      const res = await fetch('/api/wallet/escrow/lock', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token ? { Authorization: `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({
+                          grossPrice: payGross,
+                          commissionAmount: payCommission,
+                          paymentMethod: payMethod,
+                          requestId: 'REQ-LIVE-PAY'
+                        })
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.success) {
+                        setPaySuccessMsg(`تم دفع ${payGross.toLocaleString()} ج.م بنجاح وحجز ${data.escrow.netDriverAmount.toLocaleString()} ج.م في حساب الضمان للسائق!`);
+                      } else {
+                        alert(data.error || 'فشلت عملية الدفع');
+                      }
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setIsWalletActionLoading(false);
+                    }
+                  }}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isWalletActionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                  <span>تأكيد سداد {payGross.toLocaleString()} ج.م بالفيزا / المحفظة</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Payout Withdrawal Modal for Drivers & Vehicle Owners */}
+      {isPayoutModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <ArrowDownLeft className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">سحب الأرباح الفوري</h3>
+                  <span className="text-[11px] text-slate-500">تحويل فوري لحظي لحسابك أو محفظتك</span>
+                </div>
+              </div>
+              <button
+                onClick={() => { setIsPayoutModalOpen(false); setPayoutSuccessMsg(null); }}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {payoutSuccessMsg ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                <p className="text-xs font-black text-emerald-900">{payoutSuccessMsg}</p>
+                <button
+                  onClick={() => { setIsPayoutModalOpen(false); setPayoutSuccessMsg(null); }}
+                  className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl mt-2 cursor-pointer"
+                >
+                  تم
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">المبلغ المراد سحبه (ج.م):</label>
+                  <input
+                    type="number"
+                    value={payoutAmountInput}
+                    onChange={(e) => setPayoutAmountInput(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 focus:outline-hidden focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">طريقة استلام الأرباح:</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'instapay', label: 'إنستاباي' },
+                      { id: 'vodafone_cash', label: 'فودافون كاش' },
+                      { id: 'bank', label: 'تحويل بنكي' },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPayoutMethodChoice(p.id as any)}
+                        className={`py-2 rounded-xl border font-bold transition-all cursor-pointer ${
+                          payoutMethodChoice === p.id
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-50 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {payoutMethodChoice === 'instapay' ? 'عنوان الدفع اللحظي (IPA) أو رقم الهاتف:' :
+                     payoutMethodChoice === 'vodafone_cash' ? 'رقم محفظة فودافون / أورنج كاش:' : 'رقم الحساب البنكي / IBAN:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={payoutTargetAddress}
+                    onChange={(e) => setPayoutTargetAddress(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono focus:outline-hidden focus:border-blue-600"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isWalletActionLoading}
+                  onClick={async () => {
+                    setIsWalletActionLoading(true);
+                    try {
+                      const token = localStorage.getItem('ct_auth_token');
+                      const res = await fetch('/api/wallet/payout', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token ? { Authorization: `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({
+                          amount: payoutAmountInput,
+                          bankName: payoutMethodChoice === 'instapay' ? 'شبكة إنستاباي اللحظية' : payoutMethodChoice === 'vodafone_cash' ? 'محفظة الهاتف الذكية' : 'البنك الأهلي المصري',
+                          accountNumber: payoutTargetAddress
+                        })
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.success) {
+                        setPayoutSuccessMsg(`تم إرسال طلب سحب ${payoutAmountInput.toLocaleString()} ج.م بنجاح إلى ${payoutTargetAddress}!`);
+                        if (onUpdateUserAccount && userAccount) {
+                          onUpdateUserAccount({
+                            ...userAccount,
+                            walletBalance: (userAccount.walletBalance || 4850) - payoutAmountInput
+                          });
+                        }
+                      } else {
+                        alert(data.error || 'فشل تسجيل طلب السحب');
+                      }
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setIsWalletActionLoading(false);
+                    }
+                  }}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isWalletActionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowDownLeft className="w-4 h-4" />}
+                  <span>تأكيد طلب تحويل {payoutAmountInput.toLocaleString()} ج.م</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Profile Edit Modal */}
+      {isEditingProfile && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">تعديل الاسم المستعار والخصوصية</h3>
+                  <p className="text-[11px] text-slate-500">تحكم فيما يظهر للأطراف الأخرى في طلبات الشحن العامة</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditingProfile(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {profileSuccessMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{profileSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">الاسم الحقيقي المسجل في الحساب:</label>
+                <input
+                  type="text"
+                  disabled
+                  value={userAccount.name}
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-500 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  اسم الشهرة أو الاسم المستعار العلني:
+                </label>
+                <input
+                  type="text"
+                  value={aliasInput}
+                  onChange={(e) => setAliasInput(e.target.value)}
+                  placeholder="مثال: نسور النقل / شركة السلام / أبو علي"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-hidden"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  يسمح لك هذا الاسم بإخفاء هويتك الشخصية وظهور اسم الشهرة في عروض وطلبات الشحن للعامة.
+                </p>
+              </div>
+
+              <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-blue-50/70 border border-blue-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAliasInput}
+                  onChange={(e) => setShowAliasInput(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 mt-0.5"
+                />
+                <div>
+                  <span className="block font-black text-blue-950">
+                    تفعيل إظهار الاسم المستعار في المنصة
+                  </span>
+                  <span className="block text-[11px] text-blue-800 mt-0.5">
+                    عند التفعيل، سيظهر الاسم المستعار للأطراف الأخرى في المنظومة بدلاً من اسمك الحقيقي.
+                  </span>
+                </div>
+              </label>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProfile(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={profileSaving}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  {profileSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{profileSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

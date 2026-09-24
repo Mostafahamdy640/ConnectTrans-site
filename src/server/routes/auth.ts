@@ -13,7 +13,7 @@ const router = express.Router();
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const { 
-      name, email, password, phone, role, governorate, city,
+      name, displayName, showAlias, email, password, phone, role, governorate, city,
       commercialReg, nationalId, licenseNumber, truckType
     } = req.body;
 
@@ -40,6 +40,10 @@ router.post('/register', async (req: Request, res: Response) => {
     const passwordHash = await bcrypt.hash(password.trim(), 10);
     const uid = `USR-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
 
+    const userMeta: any = { list: [] };
+    if (displayName) userMeta.displayName = String(displayName).trim();
+    if (showAlias !== undefined) userMeta.showAlias = Boolean(showAlias);
+
     const [newUser] = await db.insert(users).values({
       uid,
       name: name.trim(),
@@ -56,7 +60,7 @@ router.post('/register', async (req: Request, res: Response) => {
       commercialReg,
       nationalId,
       truckType,
-      permissions: '[]',
+      permissions: JSON.stringify(userMeta),
     }).returning();
 
     // Create role-specific entity in PostgreSQL
@@ -129,6 +133,8 @@ router.post('/register', async (req: Request, res: Response) => {
         id: newUser.id,
         uid: newUser.uid,
         name: newUser.name,
+        displayName: userMeta.displayName || undefined,
+        showAlias: Boolean(userMeta.showAlias),
         email: newUser.email,
         phone: newUser.phone,
         role: newUser.role,
@@ -219,11 +225,19 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'بيانات الدخول غير صحيحة أو كلمة المرور خاطئة' });
     }
 
-    // Load supervisor permissions if applicable
     let userPermissions: string[] = [];
+    let userDisplayName: string | undefined = undefined;
+    let userShowAlias = false;
     try {
       if (user.permissions) {
-        userPermissions = JSON.parse(user.permissions);
+        const parsed = JSON.parse(user.permissions);
+        if (Array.isArray(parsed)) {
+          userPermissions = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          userPermissions = parsed.list || [];
+          userDisplayName = parsed.displayName;
+          userShowAlias = Boolean(parsed.showAlias);
+        }
       }
     } catch {
       userPermissions = [];
@@ -266,6 +280,8 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         uid: user.uid,
         name: user.name,
+        displayName: userDisplayName,
+        showAlias: userShowAlias,
         email: user.email,
         phone: user.phone,
         role: user.role,
@@ -296,8 +312,19 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
     }
 
     let userPermissions: string[] = [];
+    let userDisplayName: string | undefined = undefined;
+    let userShowAlias = false;
     try {
-      if (user.permissions) userPermissions = JSON.parse(user.permissions);
+      if (user.permissions) {
+        const parsed = JSON.parse(user.permissions);
+        if (Array.isArray(parsed)) {
+          userPermissions = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          userPermissions = parsed.list || [];
+          userDisplayName = parsed.displayName;
+          userShowAlias = Boolean(parsed.showAlias);
+        }
+      }
     } catch {
       userPermissions = [];
     }
@@ -317,6 +344,8 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
         id: user.id,
         uid: user.uid,
         name: user.name,
+        displayName: userDisplayName,
+        showAlias: userShowAlias,
         email: user.email,
         phone: user.phone,
         role: user.role,
@@ -331,6 +360,62 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Fetch me error:', error);
     return res.status(500).json({ error: 'خطأ في جلب بيانات المستخدم من قاعدة البيانات' });
+  }
+});
+
+// PATCH /api/auth/profile - Update user display name / alias and settings
+router.patch('/profile', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const { displayName, showAlias, governorate, city } = req.body;
+
+    const [existing] = await db.select().from(users).where(eq(users.uid, user.uid)).limit(1);
+    if (!existing) {
+      return res.status(404).json({ error: 'المستخدم غير موجود' });
+    }
+
+    let permObj: any = {};
+    try {
+      const parsed = JSON.parse(existing.permissions || '{}');
+      if (Array.isArray(parsed)) {
+        permObj = { list: parsed };
+      } else if (parsed && typeof parsed === 'object') {
+        permObj = parsed;
+      }
+    } catch {
+      permObj = { list: [] };
+    }
+
+    if (displayName !== undefined) permObj.displayName = String(displayName).trim();
+    if (showAlias !== undefined) permObj.showAlias = Boolean(showAlias);
+
+    const updateFields: any = {
+      permissions: JSON.stringify(permObj),
+      updatedAt: new Date(),
+    };
+    if (governorate) updateFields.governorate = governorate;
+    if (city !== undefined) updateFields.city = city;
+
+    const [updated] = await db.update(users).set(updateFields).where(eq(users.uid, user.uid)).returning();
+
+    return res.json({
+      success: true,
+      user: {
+        id: updated.id,
+        uid: updated.uid,
+        name: updated.name,
+        displayName: permObj.displayName || undefined,
+        showAlias: Boolean(permObj.showAlias),
+        email: updated.email,
+        phone: updated.phone,
+        role: updated.role,
+        governorate: updated.governorate,
+        city: updated.city,
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({ error: 'فشل تحديث بيانات الملف الشخصي' });
   }
 });
 

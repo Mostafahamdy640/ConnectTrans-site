@@ -1,14 +1,16 @@
 import React from 'react';
 import { Truck, ShieldCheck, Heart, MapPin, Phone, Mail, Lock, Smartphone, Download } from 'lucide-react';
-import { PageId } from '../types';
+import { PageId, SitePageContent } from '../types';
 
 interface FooterProps {
   onNavigate?: (page: PageId) => void;
   onOpenAdminLogin?: () => void;
   onOpenMobileApp?: () => void;
+  onOpenPayments?: () => void;
+  siteContent?: SitePageContent;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin, onOpenMobileApp }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin, onOpenMobileApp, onOpenPayments, siteContent }) => {
   const handleLink = (page: PageId) => {
     if (onNavigate) {
       onNavigate(page);
@@ -44,14 +46,25 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin, on
             </div>
 
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-sm">
-              المنصة الرائدة في الشرق الأوسط للربط الرقمي الفوري بين مكاتب النقل، أصحاب الشاحنات والسيارات، والشركات التجارية والصناعية لتوفير تجربة نقل موثوقة وسريعة بأعلى معايير الأمان والشفافية.
+              {siteContent?.footerAboutText || 'المنصة الرائدة في الشرق الأوسط للربط الرقمي الفوري بين مكاتب النقل، أصحاب الشاحنات والسيارات، والشركات التجارية والصناعية لتوفير تجربة نقل موثوقة وسريعة بأعلى معايير الأمان والشفافية.'}
             </p>
 
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-800 text-amber-400 text-xs font-bold rounded-lg border border-slate-700">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 مرخصة وموثقة رسمياً
               </span>
+
+              {onOpenPayments && (
+                <button
+                  type="button"
+                  onClick={onOpenPayments}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 text-xs font-bold rounded-lg border border-emerald-800/80 transition-colors cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>بوابة الدفع والضمان المالي (Escrow)</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -144,7 +157,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin, on
 
         {/* Bottom copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} ConnectTrans. جميع الحقوق محفوظة لخدمات النقل واللوجستيات.</p>
+          <p>{siteContent?.footerLegalNotice || `© ${new Date().getFullYear()} ConnectTrans. جميع الحقوق محفوظة لخدمات النقل واللوجستيات.`}</p>
           <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
             <button onClick={() => handleLink('faq')} className="hover:text-slate-300 cursor-pointer">
               الشروط والأحكام

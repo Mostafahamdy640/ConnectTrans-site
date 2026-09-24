@@ -12,12 +12,9 @@ import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-// Helper to mask phone numbers for unauthorized viewers
-function maskPhone(phone: string | null | undefined): string {
-  if (!phone) return '01*********';
-  const clean = phone.trim();
-  if (clean.length < 7) return '01*********';
-  return clean.slice(0, 3) + '*****' + clean.slice(-3);
+// Helper to mask phone numbers for unauthorized viewers - completely conceal to prevent data scraping
+function maskPhone(phone: string | null | undefined): string | null {
+  return null;
 }
 
 // Optional Auth extractor to identify viewer if token present
@@ -35,7 +32,7 @@ function extractOptionalUser(req: AuthRequest) {
 }
 
 // GET /api/requests - List all transport requests (Marketplace)
-// Requirement 17: Mask contact details until accepted
+// Strict Privacy: Conceal all phone numbers and direct contact details unless authorized party
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const viewer = extractOptionalUser(req);
@@ -60,14 +57,14 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         // Determine if viewer is authorized to see unmasked shipper phone
         const isOwner = viewer && (viewer.uid === r.creatorId || viewer.role === 'admin' || viewer.role === 'supervisor');
         const hasAccepted = viewer && acceptances.some(a => a.acceptedById === viewer.uid);
-        const canViewShipperPhone = isOwner || hasAccepted;
+        const canViewShipperPhone = Boolean(isOwner || hasAccepted);
 
         const sanitizedOffers = offers.map(o => {
           const canViewOfficePhone = viewer && (viewer.uid === o.officeId || viewer.uid === r.creatorId || viewer.role === 'admin');
           return {
             ...o,
             offeredPricePerUnit: Number(o.offeredPricePerUnit),
-            officePhone: canViewOfficePhone ? o.officePhone : maskPhone(o.officePhone),
+            officePhone: canViewOfficePhone ? o.officePhone : null,
           };
         });
 
@@ -75,7 +72,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
           ...r,
           pricePerUnit: Number(r.pricePerUnit),
           weightTons: Number(r.weightTons || 25),
-          creatorPhone: canViewShipperPhone ? r.creatorPhone : maskPhone(r.creatorPhone),
+          creatorPhone: canViewShipperPhone ? r.creatorPhone : null,
           offersCount: sanitizedOffers.length,
           offers: sanitizedOffers,
           acceptances,

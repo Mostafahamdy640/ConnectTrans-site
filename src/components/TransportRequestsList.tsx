@@ -134,7 +134,7 @@ export const TransportRequestsList: React.FC<TransportRequestsListProps> = ({
   return (
     <div id="transport-requests-section" className="space-y-6">
       {/* Section Header */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+      <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-xs overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-100">
@@ -150,7 +150,7 @@ export const TransportRequestsList: React.FC<TransportRequestsListProps> = ({
           </div>
 
           {/* Privacy Indicator */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl shrink-0">
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
             <div className="text-right">
               <span className="block text-[11px] font-black text-slate-900">حماية الخصوصية مفعلة</span>
@@ -163,77 +163,81 @@ export const TransportRequestsList: React.FC<TransportRequestsListProps> = ({
           </div>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-5">
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'all'
-                  ? 'bg-white text-slate-950 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              جميع الطلبات ({enrichedRequests.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('available')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'available'
-                  ? 'bg-white text-emerald-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              بانتظار قبول وحصص شاغرة
-            </button>
-            <button
-              onClick={() => setActiveTab('in_progress')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'in_progress'
-                  ? 'bg-white text-blue-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              قيد التنفيذ على الطريق
-            </button>
-            {currentUser && (
+        {/* Tab Selection & Search */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-5">
+          {/* Scrollable Tabs Container */}
+          <div className="w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 lg:pb-0">
+            <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl min-w-max">
               <button
-                onClick={() => setActiveTab('my_requests')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'my_requests'
-                    ? 'bg-white text-indigo-700 shadow-xs'
+                onClick={() => setActiveTab('all')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'all'
+                    ? 'bg-white text-slate-950 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>طلبات تخصني / معروضة من طرفي</span>
+                جميع الطلبات ({enrichedRequests.length})
               </button>
-            )}
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'history'
-                  ? 'bg-white text-purple-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>أرشيف وهيستوري النقلات ({completedTrips.length})</span>
-            </button>
+              <button
+                onClick={() => setActiveTab('available')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'available'
+                    ? 'bg-white text-emerald-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                بانتظار قبول وحصص شاغرة
+              </button>
+              <button
+                onClick={() => setActiveTab('in_progress')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'in_progress'
+                    ? 'bg-white text-blue-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                قيد التنفيذ على الطريق
+              </button>
+              {currentUser && (
+                <button
+                  onClick={() => setActiveTab('my_requests')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                    activeTab === 'my_requests'
+                      ? 'bg-white text-indigo-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>طلبات تخصني / معروضة من طرفي</span>
+                </button>
+              )}
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                  activeTab === 'history'
+                    ? 'bg-white text-purple-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>أرشيف وهيستوري النقلات ({completedTrips.length})</span>
+              </button>
+            </div>
           </div>
 
           {/* Search bar */}
-          <div className="w-full sm:w-64">
+          <div className="w-full lg:w-72 shrink-0">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="بحث برقم الطلب، الوجهة، الحمولة..."
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
         </div>
       </div>
+
 
       {/* Main Content Area */}
       {activeTab !== 'history' ? (

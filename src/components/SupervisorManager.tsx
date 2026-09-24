@@ -15,6 +15,10 @@ export interface SupervisorItem {
 }
 
 const ALL_SYSTEM_PERMISSIONS = [
+  { key: 'finance.release_funds', label: 'تحرير وصرف أموال الضمان للسائقين (الإدارة المالية)', group: 'الإدارة المالية والخزانة' },
+  { key: 'finance.suspend_payout', label: 'تجميد وتعطيل صلاحية تحويل الأموال عند الشبهة أو النزاع', group: 'الإدارة المالية والخزانة' },
+  { key: 'finance.audit_escrow', label: 'تدقيق حسابات الضمان والوساطة والمحافظ البنكية', group: 'الإدارة المالية والخزانة' },
+  { key: 'financials.manage', label: 'إدارة العمولات والأسعار ومحفظة المعاملات', group: 'الإدارة المالية والخزانة' },
   { key: 'users.manage', label: 'إدارة وتعديل المستخدمين', group: 'المستخدمين والشركاء' },
   { key: 'companies.manage', label: 'إدارة واعتماد الشركات والمصانع', group: 'المستخدمين والشركاء' },
   { key: 'offices.manage', label: 'إدارة مكاتب النقل والوساطة', group: 'المستخدمين والشركاء' },
@@ -24,7 +28,6 @@ const ALL_SYSTEM_PERMISSIONS = [
   { key: 'requests.manage', label: 'إدارة طلبات الشحن والكميات', group: 'العمليات والرحلات' },
   { key: 'offers.manage', label: 'إدارة عروض أسعار المكاتب', group: 'العمليات والرحلات' },
   { key: 'trips.manage', label: 'متابعة وإدارة مسارات وحالات الرحلات', group: 'العمليات والرحلات' },
-  { key: 'financials.manage', label: 'إدارة العمولات والأسعار والمحفظة', group: 'الماليات والعمولات' },
   { key: 'ratings.manage', label: 'إدارة التقييمات ومراجعات الأداء', group: 'الجودة والمحتوى' },
   { key: 'notifications.send', label: 'إرسال الإشعارات والرسائل التنبيهية', group: 'الجودة والمحتوى' },
   { key: 'content.edit', label: 'تعديل محتوى وصفحات المنصة (CMS)', group: 'الجودة والمحتوى' },
@@ -52,6 +55,15 @@ export const SupervisorManager: React.FC = () => {
   const [editPermissions, setEditPermissions] = useState<string[]>([]);
 
   const DEFAULT_SUPERVISORS: SupervisorItem[] = [
+    {
+      uid: 'FIN-001',
+      name: 'أ/ حسام الدين عامر (المراقب المالي العام)',
+      phone: '01055667788',
+      role: 'finance',
+      status: 'active',
+      createdAt: '2026-02-15T09:00:00Z',
+      permissions: ['finance.release_funds', 'finance.suspend_payout', 'finance.audit_escrow', 'financials.manage', 'reports.read', 'audit.read'],
+    },
     {
       uid: 'SUP-001',
       name: 'م/ سارة إبراهيم الشناوي',
@@ -427,7 +439,18 @@ export const SupervisorManager: React.FC = () => {
                         <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-xs">
                           {sup.name.charAt(0)}
                         </div>
-                        <span>{sup.name}</span>
+                        <div className="flex flex-col">
+                          <span>{sup.name}</span>
+                          {sup.role === 'finance' ? (
+                            <span className="text-[10px] font-black text-emerald-400">
+                              ● الإدارة المالية والخزانة
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-black text-blue-400">
+                              ● مشرف تشغيل وعمليات
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-300 font-mono">{sup.phone}</td>

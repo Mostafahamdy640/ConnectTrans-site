@@ -23,6 +23,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     initialRole === 'admin' ? 'company' : (initialRole as 'company' | 'office' | 'driver')
   );
   const [fullName, setFullName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [showAlias, setShowAlias] = useState(false);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [companyOrLicence, setCompanyOrLicence] = useState('');
@@ -107,6 +109,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const authenticatedAccount: UserAccount = {
           id: data.user.uid,
           name: data.user.name,
+          displayName: data.user.displayName || undefined,
+          showAlias: data.user.showAlias,
           role: data.user.role,
           phone: data.user.phone,
           governorate: data.user.governorate || governorate,
@@ -131,6 +135,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: fullName.trim(),
+            displayName: displayName.trim() || undefined,
+            showAlias: Boolean(showAlias),
             phone: phone.trim(),
             password: password.trim(),
             role,
@@ -153,6 +159,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const newAccount: UserAccount = {
           id: data.user.uid,
           name: data.user.name,
+          displayName: displayName.trim() || undefined,
+          showAlias: Boolean(showAlias),
           role: data.user.role,
           phone: data.user.phone,
           governorate: data.user.governorate,
@@ -316,6 +324,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     }
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-hidden"
                   />
+                </div>
+              )}
+
+              {mode === 'register' && (
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      اسم الشهرة أو الاسم التجاري العلني (اسم مستعار - اختياري):
+                    </label>
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="مثال: نسور النقل / شركة الأمانة / كابتن السويس"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-hidden"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      يمكنك تحديد اسم مستعار أو علني يظهر في قائمة الطلبات والعروض العامة بدلاً من اسمك الشخصي.
+                    </p>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer p-2.5 bg-blue-50/70 rounded-xl border border-blue-200">
+                    <input
+                      type="checkbox"
+                      checked={showAlias}
+                      onChange={(e) => setShowAlias(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-bold text-blue-950">
+                      إظهار الاسم المستعار في الطلبات والعروض بدلاً من الاسم الحقيقي
+                    </span>
+                  </label>
                 </div>
               )}
 

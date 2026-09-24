@@ -15,7 +15,9 @@ import { RequestLifecycleManager } from './RequestLifecycleManager';
 import { TripRatingManager } from './TripRatingManager';
 import { AuditAndBackupManager } from './AuditAndBackupManager';
 import { SupervisorManager } from './SupervisorManager';
-import { UserCheck } from 'lucide-react';
+import { PaymentGatewayManager } from './PaymentGatewayManager';
+import { FinancialAdministrationManager } from './FinancialAdministrationManager';
+import { UserCheck, CreditCard } from 'lucide-react';
 
 interface AdminPanelProps {
   users: UserAccount[];
@@ -36,7 +38,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateSiteContent,
   onNavigateToHome,
 }) => {
-  const [activeTab, setActiveTab] = useState<'workflow' | 'entities' | 'requests' | 'trips' | 'commission' | 'users' | 'supervisors' | 'backup' | 'cms'>('workflow');
+  const [activeTab, setActiveTab] = useState<'workflow' | 'entities' | 'requests' | 'trips' | 'commission' | 'users' | 'supervisors' | 'finance' | 'backup' | 'cms' | 'gateways'>('workflow');
   
   // Commission Profiles state
   const [profiles, setProfiles] = useState<CommissionProfile[]>(commissionProfiles);
@@ -346,6 +348,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('finance')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'finance'
+                ? 'border-emerald-400 text-emerald-300 bg-emerald-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <DollarSign className="w-4 h-4 text-emerald-400" />
+            <span>الإدارة المالية وتحرير الأموال (Treasury & Escrow)</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('requests')}
             className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
               activeTab === 'requests'
@@ -403,6 +417,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           >
             <Edit3 className="w-4 h-4 text-purple-400" />
             <span>نصوص وصفحات الموقع (CMS)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('gateways')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black border-b-2 transition-all cursor-pointer ${
+              activeTab === 'gateways'
+                ? 'border-emerald-400 text-emerald-300 bg-emerald-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <CreditCard className="w-4 h-4 text-emerald-400" />
+            <span>بوابات الدفع ومتجر التطبيقات (Stores & CBE Pay)</span>
           </button>
         </div>
 
@@ -992,6 +1018,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <SupervisorManager />
         )}
 
+        {/* ================= TAB: FINANCIAL ADMINISTRATION & TREASURY ================= */}
+        {activeTab === 'finance' && (
+          <FinancialAdministrationManager currentUser={users.find(u => u.role === 'admin')} />
+        )}
+
         {/* ================= TAB 3: PAGE CONTENT & CMS ================= */}
         {activeTab === 'cms' && (
           <div className="space-y-6">
@@ -1081,6 +1112,172 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       onChange={(e) => setCmsContent({ ...cmsContent, vatNumber: e.target.value })}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono focus:border-emerald-400 focus:outline-hidden"
                     />
+                  </div>
+                </div>
+
+                {/* 1. Hero Buttons & Call to Actions */}
+                <div className="pt-6 mt-4 border-t border-slate-800 space-y-4">
+                  <h4 className="text-sm font-black text-amber-400 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4" />
+                    <span>أزرار الواجهة الترحيبية (Hero Action Buttons):</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-1">زر طلب نقل (الشركات):</label>
+                      <input
+                        type="text"
+                        value={cmsContent.heroPrimaryBtnText || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, heroPrimaryBtnText: e.target.value })}
+                        placeholder="طلب نقل بضائع (شركات)"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-emerald-400 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-1">زر مكاتب النقل والوساطة:</label>
+                      <input
+                        type="text"
+                        value={cmsContent.heroSecondaryBtnText || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, heroSecondaryBtnText: e.target.value })}
+                        placeholder="بوابة مكاتب النقل المعتمدة"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-emerald-400 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-1">زر أصحاب السيارات والسائقين:</label>
+                      <input
+                        type="text"
+                        value={cmsContent.heroDriverBtnText || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, heroDriverBtnText: e.target.value })}
+                        placeholder="دخول أصحاب السيارات والسائقين"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-emerald-400 focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Guest View-Only Banner */}
+                <div className="pt-6 mt-4 border-t border-slate-800 space-y-4">
+                  <h4 className="text-sm font-black text-amber-400 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>تنبيه وضع المشاهدة للزوار والضيوف (Guest View-Only Mode):</span>
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-1">عنوان شريط وضع المشاهدة للزوار:</label>
+                      <input
+                        type="text"
+                        value={cmsContent.guestBannerTitle || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, guestBannerTitle: e.target.value })}
+                        placeholder="وضع المشاهدة العامة والاستعراض مفعل للزوار"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-emerald-400 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-1">النص التوضيحي لشريط وضع المشاهدة وحماية الخصوصية:</label>
+                      <textarea
+                        rows={2}
+                        value={cmsContent.guestBannerSubtext || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, guestBannerSubtext: e.target.value })}
+                        placeholder="يمكنك استعراض مسارات وكميات طلبات النقل الحية. بيانات الاتصال والتنفيذ مشفرة ومحمية..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs leading-relaxed focus:border-emerald-400 focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Three Commercial Categories Cards */}
+                <div className="pt-6 mt-4 border-t border-slate-800 space-y-4">
+                  <h4 className="text-sm font-black text-amber-400 flex items-center gap-2">
+                    <Layers className="w-4 h-4" />
+                    <span>نصوص بطاقات الفئات التجارية الثلاث (الرئيسية):</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Companies */}
+                    <div className="p-3 bg-slate-950 rounded-2xl border border-slate-700 space-y-2">
+                      <span className="text-xs font-bold text-emerald-400 block">1. الشركات والمصانع:</span>
+                      <input
+                        type="text"
+                        value={cmsContent.categoryCompanyTitle || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, categoryCompanyTitle: e.target.value })}
+                        placeholder="عنوان فئة الشركات"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-bold"
+                      />
+                      <textarea
+                        rows={2}
+                        value={cmsContent.categoryCompanyDesc || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, categoryCompanyDesc: e.target.value })}
+                        placeholder="وصف فئة الشركات"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-[11px]"
+                      />
+                    </div>
+
+                    {/* Offices */}
+                    <div className="p-3 bg-slate-950 rounded-2xl border border-slate-700 space-y-2">
+                      <span className="text-xs font-bold text-amber-400 block">2. مكاتب النقل والوساطة:</span>
+                      <input
+                        type="text"
+                        value={cmsContent.categoryOfficeTitle || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, categoryOfficeTitle: e.target.value })}
+                        placeholder="عنوان فئة المكاتب"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-bold"
+                      />
+                      <textarea
+                        rows={2}
+                        value={cmsContent.categoryOfficeDesc || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, categoryOfficeDesc: e.target.value })}
+                        placeholder="وصف فئة المكاتب"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-[11px]"
+                      />
+                    </div>
+
+                    {/* Drivers */}
+                    <div className="p-3 bg-slate-950 rounded-2xl border border-slate-700 space-y-2">
+                      <span className="text-xs font-bold text-blue-400 block">3. أصحاب السيارات والسائقين:</span>
+                      <input
+                        type="text"
+                        value={cmsContent.categoryDriverTitle || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, categoryDriverTitle: e.target.value })}
+                        placeholder="عنوان فئة أصحاب السيارات"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-bold"
+                      />
+                      <textarea
+                        rows={2}
+                        value={cmsContent.categoryDriverDesc || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, categoryDriverDesc: e.target.value })}
+                        placeholder="وصف فئة أصحاب السيارات"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Footer & Legal Texts */}
+                <div className="pt-6 mt-4 border-t border-slate-800 space-y-4">
+                  <h4 className="text-sm font-black text-amber-400 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <span>تذييل الموقع والإشعار القانوني (Footer & Legal):</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-1">نبذة المنصة في أسفل الصفحة (Footer About):</label>
+                      <textarea
+                        rows={3}
+                        value={cmsContent.footerAboutText || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, footerAboutText: e.target.value })}
+                        placeholder="نبذة تعريفية في التذييل..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs leading-relaxed focus:border-emerald-400 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 text-xs font-bold mb-1">الإشعار القانوني وحقوق الملكية (Legal Notice):</label>
+                      <textarea
+                        rows={3}
+                        value={cmsContent.footerLegalNotice || ''}
+                        onChange={(e) => setCmsContent({ ...cmsContent, footerLegalNotice: e.target.value })}
+                        placeholder="جميع الحقوق محفوظة لمنصة ConnectTrans مصر..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs leading-relaxed focus:border-emerald-400 focus:outline-hidden"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1282,6 +1479,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
           </div>
+        )}
+
+        {/* ================= TAB: PAYMENT GATEWAYS & APP STORES ================= */}
+        {activeTab === 'gateways' && (
+          <PaymentGatewayManager />
         )}
 
       </div>

@@ -126,6 +126,14 @@ export const HomePage: React.FC<HomePageProps> = ({
           <p className="text-sm text-slate-600 font-medium">
             دخول محدد ومصادقة مشددة لكل من الشركات والمصانع، مكاتب النقل، وأصحاب الشاحنات والسيارات.
           </p>
+
+          {/* Guest View-Only Friendly Banner */}
+          {!currentUser && (
+            <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200/80 rounded-2xl text-xs font-bold text-amber-900">
+              <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>وضع المشاهدة والاستعراض العام مفعّل: لتنفيذ العمليات أو إرسال العروض، يرجى تسجيل الدخول.</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -141,14 +149,16 @@ export const HomePage: React.FC<HomePageProps> = ({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
               <span className="absolute bottom-3 right-4 px-3 py-1 bg-emerald-600 text-white text-xs font-black rounded-lg">
-                حلول الشركات والمصانع
+                {siteContent?.companyCardBadge || 'حلول الشركات والمصانع'}
               </span>
             </div>
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-900 mb-2">بوابة الشركات والمصانع</h3>
+                <h3 className="text-lg font-black text-slate-900 mb-2">
+                  {siteContent?.companyCardTitle || 'بوابة الشركات والمصانع'}
+                </h3>
                 <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                  تسجيل بيانات الشركة وإرسال طلبات التعاون المباشر لـ ConnectTrans، مع متابعة البوالص والرحلات.
+                  {siteContent?.companyCardDesc || 'تسجيل بيانات الشركة وإرسال طلبات التعاون المباشر لـ ConnectTrans، مع متابعة البوالص والرحلات.'}
                 </p>
               </div>
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
@@ -188,14 +198,16 @@ export const HomePage: React.FC<HomePageProps> = ({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
               <span className="absolute bottom-3 right-4 px-3 py-1 bg-amber-600 text-white text-xs font-black rounded-lg">
-                مكاتب النقل والوساطة
+                {siteContent?.officeCardBadge || 'مكاتب النقل والوساطة'}
               </span>
             </div>
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-900 mb-2">بوابة مكاتب النقل</h3>
+                <h3 className="text-lg font-black text-slate-900 mb-2">
+                  {siteContent?.officeCardTitle || 'بوابة مكاتب النقل'}
+                </h3>
                 <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                  استعراض طلبات النقل المعتمدة وتقديم عروض الأسعار الرسمية وإدارة أسطول السائقين والقبولات.
+                  {siteContent?.officeCardDesc || 'استعراض طلبات النقل المعتمدة وتقديم عروض الأسعار الرسمية وإدارة أسطول السائقين والقبولات.'}
                 </p>
               </div>
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
@@ -235,14 +247,16 @@ export const HomePage: React.FC<HomePageProps> = ({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
               <span className="absolute bottom-3 right-4 px-3 py-1 bg-blue-600 text-white text-xs font-black rounded-lg">
-                أصحاب الشاحنات والسيارات
+                {siteContent?.driverCardBadge || 'أصحاب الشاحنات والسيارات'}
               </span>
             </div>
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-900 mb-2">بوابة أصحاب السيارات</h3>
+                <h3 className="text-lg font-black text-slate-900 mb-2">
+                  {siteContent?.driverCardTitle || 'بوابة أصحاب السيارات'}
+                </h3>
                 <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                  تصفح عروض مكاتب النقل، قبول الشحنات وتحديد الكمية المناسبة، مع حماية سريعة لمستحقات المشوار.
+                  {siteContent?.driverCardDesc || 'تصفح عروض مكاتب النقل، قبول الشحنات وتحديد الكمية المناسبة، مع حماية سريعة لمستحقات المشوار.'}
                 </p>
               </div>
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">

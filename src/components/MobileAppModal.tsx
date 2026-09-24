@@ -369,50 +369,129 @@ export const MobileAppModal: React.FC<MobileAppModalProps> = ({ isOpen, onClose 
 
           {/* TAB 4: PUBLISHING GUIDE FOR PLATFORM OWNER */}
           {activeTab === 'publish' && (
-            <div className="space-y-5 animate-fadeIn">
-              <div className="bg-slate-950 text-slate-200 rounded-2xl p-5 border border-slate-800 space-y-4">
+            <div className="space-y-6 animate-fadeIn">
+              <div className="bg-slate-950 text-slate-200 rounded-3xl p-6 border border-slate-800 space-y-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                    <Code2 className="w-5 h-5" />
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                    <Code2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-white">دليل تحويل الموقع ورفعه على Google Play و App Store</h4>
-                    <p className="text-xs text-slate-400">إرشادات معتمدة لمالك المنصة لرفع التطبيق على المتاجر الرسمية</p>
+                    <h4 className="text-base font-black text-white">الدليل التقني الكامل: تحويل المنصة لتطبيق ورفعه على Google Play و App Store</h4>
+                    <p className="text-xs text-slate-400">ربط مباشر بنسبة 100% مع نفس الموقع وقاعدة البيانات المركزية</p>
                   </div>
                 </div>
 
-                <div className="space-y-3 text-xs">
-                  <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <h5 className="font-bold text-amber-300 mb-1">أولاً: النشر على Google Play (أندرويد)</h5>
-                    <p className="text-slate-400 mb-2 leading-relaxed">
-                      باستخدام <strong>Capacitor</strong> أو <strong>Bubblewrap (TWA)</strong>، يتم حزم هذا الموقع كملف <code>.aab</code> أو <code>.apk</code> جاهز للرفع:
-                    </p>
-                    <pre className="bg-black/80 p-2.5 rounded-lg text-emerald-400 font-mono text-[11px] overflow-x-auto text-left dir-ltr">
-{`# 1. تثبيت Capacitor
-npm install @capacitor/core @capacitor/cli @capacitor/android
-npx cap init ConnectTrans com.connecttrans.app
-npx cap add android
+                {/* Conceptual Strategy Card */}
+                <div className="bg-slate-900/90 p-4 rounded-2xl border border-blue-500/30 text-xs space-y-2">
+                  <span className="font-black text-blue-400 block text-sm">💡 كيف يرتبط التطبيق بالموقع مباشرة دون الحاجة لبرمجة تطبيقين منفصلين؟</span>
+                  <p className="text-slate-300 leading-relaxed">
+                    باستخدام تقنية <strong>Capacitor Native Bridge</strong> أو <strong>TWA (Trusted Web Activity)</strong>، يتم تغليف كود الويب داخل غلاف أصلي (Native Shell) معتمد رسمياً من Google و Apple.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
+                    <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                      <strong className="text-emerald-400 block mb-1">النمط الحي (Live Server Sync):</strong>
+                      <span className="text-slate-400">التطبيق يفتح عنوان موقعك المباشر؛ أي تعديل تبرمجه في الموقع ينعكس تلقائياً في هواتف المستخدمين دون الحاجة لإعادة رفع التطبيق للمتجر كل مرة!</span>
+                    </div>
+                    <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                      <strong className="text-purple-400 block mb-1">الوصول للمزايا الأصلية (Native APIs):</strong>
+                      <span className="text-slate-400">الوصول الكامل لكاميرا الهاتف لتصوير البوالص، نظام الإشعارات المنبثقة (Push Notifications)، ونظام الـ GPS لتتبع حركة الشاحنات.</span>
+                    </div>
+                  </div>
+                </div>
 
-# 2. بناء الحزمة وفتحها في Android Studio
+                <div className="space-y-4 text-xs">
+                  {/* Step 1: Android & Google Play Console */}
+                  <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-black text-emerald-400 text-sm">1. خطوات تجهيز ورفع تطبيق Google Play (أندرويد)</h5>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-mono">ملف Android App Bundle (.aab)</span>
+                    </div>
+                    <p className="text-slate-300 leading-relaxed">
+                      1. فتح حساب مطور على <strong>Google Play Console</strong> (رسوم تدفع لمرة واحدة 25$).<br/>
+                      2. تثبيت أداة Capacitor وتشغيل الأوامر التالية داخل مجلد المشروع:
+                    </p>
+                    <pre className="bg-black/90 p-3 rounded-xl text-emerald-400 font-mono text-[11px] overflow-x-auto text-left dir-ltr">
+{`# تثبيت الحزم الأساسية
+npm install @capacitor/core @capacitor/cli @capacitor/android
+
+# تهيئة التطبيق باسم وهوية ConnectTrans
+npx cap init ConnectTrans com.connecttrans.app --web-dir dist
+
+# إضافة منصة الأندرويد وبناء المشروع
 npm run build
-npx cap sync
-npx cap open android`}
+npx cap add android
+npx cap sync`}
                     </pre>
+
+                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1 text-slate-300">
+                      <span className="text-amber-400 font-bold block">ملف الإعدادات (capacitor.config.json):</span>
+                      <pre className="bg-black/70 p-2.5 rounded-lg text-blue-300 font-mono text-[10px] overflow-x-auto text-left dir-ltr">
+{`{
+  "appId": "com.connecttrans.app",
+  "appName": "ConnectTrans",
+  "webDir": "dist",
+  "server": {
+    "url": "https://your-domain.com",
+    "cleartext": false
+  }
+}`}
+                      </pre>
+                      <span className="text-[10px] text-slate-400 block">
+                        * بوضع رابط موقعك في خانة <code>server.url</code>، سيتصل التطبيق بالموقع مباشرة وتكون كل التحديثات والبيانات متطابقة لحظياً.
+                      </span>
+                    </div>
+
+                    <p className="text-slate-300 leading-relaxed text-[11px]">
+                      3. فتح المشروع في <strong>Android Studio</strong> عبر الأمر <code>npx cap open android</code>.<br/>
+                      4. اختيار <strong>Build ➔ Generate Signed Bundle / APK ➔ Android App Bundle (.aab)</strong>.<br/>
+                      5. رفع ملف <code>.aab</code> في مسار الإصدار بـ Google Play Console، وإدخال وصف التطبيق ولقطات الشاشة وسياسة الخصوصية.
+                    </p>
                   </div>
 
-                  <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <h5 className="font-bold text-blue-300 mb-1">ثانياً: النشر على Apple App Store (آيفون)</h5>
-                    <p className="text-slate-400 mb-2 leading-relaxed">
-                      يتم توليد مشروع Xcode متوافق مع معايير Apple Developer Program:
+                  {/* Step 2: iOS & Apple App Store */}
+                  <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-black text-blue-400 text-sm">2. خطوات تجهيز ورفع تطبيق Apple App Store (آيفون)</h5>
+                      <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-md font-mono">مشروع Xcode (.xcarchive)</span>
+                    </div>
+                    <p className="text-slate-300 leading-relaxed">
+                      1. الاشتراك في برنامج مطوري آبل <strong>Apple Developer Program</strong> (99$ سنوياً).<br/>
+                      2. تشغيل الأوامر التالية على جهاز Mac:
                     </p>
-                    <pre className="bg-black/80 p-2.5 rounded-lg text-emerald-400 font-mono text-[11px] overflow-x-auto text-left dir-ltr">
-{`# 1. إضافة نظام iOS
+                    <pre className="bg-black/90 p-3 rounded-xl text-blue-400 font-mono text-[11px] overflow-x-auto text-left dir-ltr">
+{`# تثبيت دعم iOS
 npm install @capacitor/ios
 npx cap add ios
+npx cap sync
 
-# 2. فتح المشروع في Xcode ورفعه لـ TestFlight / App Store
+# فتح المشروع داخل بيئة Xcode
 npx cap open ios`}
                     </pre>
+
+                    <p className="text-slate-300 leading-relaxed text-[11px]">
+                      3. في Xcode: تحديد حسابك المطور في تبويب <strong>Signing & Capabilities</strong> وتفعيل خيارات <strong>Push Notifications</strong> و <strong>Background Modes (Location)</strong> لتتبع الشاحنات.<br/>
+                      4. الضغط على <strong>Product ➔ Archive</strong> ثم <strong>Distribute App</strong> لرفع النسخة لـ <strong>TestFlight</strong> ثم إرسالها لمراجعة متجر آبل.<br/>
+                      5. اجتياز شروط آبل (Guideline 4.2): يتيح التطبيق تجربة مستخدم كاملة وخدمات حقيقية للمستخدمين والتتبع الميداني مما يضمن قبوله السريع.
+                    </p>
+                  </div>
+
+                  {/* Step 3: Shared Database & Real-Time Sync */}
+                  <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-2">
+                    <h5 className="font-black text-amber-400 text-sm">3. كيف تتصل جميع الأطراف بقاعدة البيانات المشتركة؟</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-300">
+                      <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                        <strong className="text-white block mb-1">تسجيل الدخول الموحد (JWT):</strong>
+                        حساب واحد يعمل في الويب، الأندرويد، والآيفون بنفس رقم الهاتف وكلمة المرور.
+                      </div>
+                      <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                        <strong className="text-white block mb-1">الخزانة والمحفظة (Escrow):</strong>
+                        العمليات المالية تُحسم وتُضاف على نفس الخادم المركزي لمنع أي تكرار أو ازدواجية.
+                      </div>
+                      <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                        <strong className="text-white block mb-1">الإشعارات اللحظية (Push):</strong>
+                        ربط Firebase Cloud Messaging (FCM) لإرسال تنبيه صوتي للسائق فور نشر طلب شحن جديد.
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

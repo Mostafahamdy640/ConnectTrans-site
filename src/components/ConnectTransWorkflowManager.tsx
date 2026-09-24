@@ -350,7 +350,7 @@ export const ConnectTransWorkflowManager: React.FC<ConnectTransWorkflowManagerPr
       {/* ================= STAGE 0: VISUAL FLOW OVERVIEW ================= */}
       {activeWorkflowTab === 'flow' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Step 1 */}
             <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3 relative overflow-hidden">
               <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-black flex items-center justify-center text-sm border border-emerald-500/30">
@@ -415,14 +415,33 @@ export const ConnectTransWorkflowManager: React.FC<ConnectTransWorkflowManagerPr
               </div>
               <h4 className="text-sm font-black text-white flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-purple-400" />
-                <span>التواصل والتقييمات</span>
+                <span>التواصل والتسليم</span>
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                كشف بيانات التواصل لكافة الأطراف فور القبول، إتمام الرحلة، تقييم الأطراف، وتسجيل كافة العمليات.
+                كشف بيانات التواصل لكافة الأطراف فور القبول، إتمام الرحلة، تقييم الأطراف، وتصريح المكتب بصرف الأجر.
               </p>
               <div className="pt-2 border-t border-slate-800">
                 <span className="text-[11px] font-mono text-purple-400 font-bold">
                   {db.trips.length} رحلة و {db.ratings.length} تقييم
+                </span>
+              </div>
+            </div>
+
+            {/* Step 5: Financial Administration */}
+            <div className="bg-slate-900 border border-emerald-800/60 p-5 rounded-3xl space-y-3 relative overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-black flex items-center justify-center text-sm border border-emerald-500/30">
+                5
+              </div>
+              <h4 className="text-sm font-black text-white flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+                <span>الإدارة المالية والخزانة</span>
+              </h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                تحرير وصرف أموال الضمان للسائق أو تعطيل التحويل؛ حتى بعد تصريح المكتب تظل الأموال معلقة حتى تحرير المالية.
+              </p>
+              <div className="pt-2 border-t border-slate-800">
+                <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                  حوكمة ثلاثية صارمة
                 </span>
               </div>
             </div>

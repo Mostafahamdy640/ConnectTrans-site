@@ -10,6 +10,7 @@ interface NavbarProps {
   onOpenAdmin: () => void;
   onLogout: () => void;
   onOpenMobileApp?: () => void;
+  onOpenPayments?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -20,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdmin,
   onLogout,
   onOpenMobileApp,
+  onOpenPayments,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -125,6 +127,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons (Right) */}
           <div className="hidden sm:flex items-center gap-2.5">
+            {/* Payment & Escrow System Button */}
+            {onOpenPayments && (
+              <button
+                onClick={onOpenPayments}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer shadow-2xs group"
+                title="بوابة الدفع والضمان المالي (Escrow)"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
+                <span>المدفوعات والضمان</span>
+              </button>
+            )}
+
             {/* Download Mobile App Button */}
             {onOpenMobileApp && (
               <button
@@ -286,6 +300,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>إنشاء حساب جديد</span>
                 </button>
               </>
+            )}
+
+            {onOpenPayments && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenPayments();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-50 text-blue-900 border border-blue-200 font-bold rounded-lg hover:bg-blue-100 cursor-pointer text-xs mt-1"
+              >
+                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                <span>منظومة وعمليات الدفع والضمان (Escrow)</span>
+              </button>
             )}
 
             {onOpenMobileApp && (

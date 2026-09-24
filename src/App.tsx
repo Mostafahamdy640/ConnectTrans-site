@@ -17,8 +17,9 @@ import { RoleDetailsModal } from './components/RoleDetailsModal';
 import { ServiceDetailsModal } from './components/ServiceDetailsModal';
 import { BookingModal } from './components/BookingModal';
 import { MobileAppModal } from './components/MobileAppModal';
+import { PaymentOperationsManager } from './components/PaymentOperationsManager';
 import { PageId, UserRole, UserAccount, CommissionProfile, SitePageContent, Shipment } from './types';
-import { CheckCircle2, ShieldAlert, Lock, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Lock, ArrowLeft, ShieldCheck, X } from 'lucide-react';
 import { 
   INITIAL_COMMISSION_PROFILES, 
   INITIAL_USERS, 
@@ -58,6 +59,7 @@ export default function App() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [mobileAppModalOpen, setMobileAppModalOpen] = useState(false);
+  const [paymentOperationsModalOpen, setPaymentOperationsModalOpen] = useState(false);
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -132,6 +134,8 @@ export default function App() {
             const verifiedAccount: UserAccount = {
               id: data.user.uid,
               name: data.user.name,
+              displayName: data.user.displayName || undefined,
+              showAlias: Boolean(data.user.showAlias),
               role: data.user.role,
               phone: data.user.phone,
               governorate: data.user.governorate || 'القاهرة',
@@ -283,6 +287,7 @@ export default function App() {
         }}
         onLogout={handleLogout}
         onOpenMobileApp={() => setMobileAppModalOpen(true)}
+        onOpenPayments={() => setPaymentOperationsModalOpen(true)}
       />
 
       {/* Main Single Page / View Renderer */}
@@ -329,6 +334,10 @@ export default function App() {
             }}
             onLogout={handleLogout}
             onRequireLogin={(role) => handleOpenAuth('login', role || activeRole)}
+            onUpdateUserAccount={(updated) => {
+              setCurrentUser(updated);
+              showToast('تم تحديث بيانات ملفك الشخصي والاسم المستعار بنجاح.');
+            }}
           />
         )}
 
@@ -453,6 +462,8 @@ export default function App() {
           onNavigate={handleNavigate} 
           onOpenAdminLogin={() => setAdminSecurityModalOpen(true)}
           onOpenMobileApp={() => setMobileAppModalOpen(true)}
+          onOpenPayments={() => setPaymentOperationsModalOpen(true)}
+          siteContent={siteContent}
         />
       )}
 
@@ -500,6 +511,31 @@ export default function App() {
         isOpen={mobileAppModalOpen}
         onClose={() => setMobileAppModalOpen(false)}
       />
+
+      {/* Payment & Escrow Operations Modal */}
+      {paymentOperationsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-slate-100 rounded-3xl max-w-5xl w-full border border-slate-300 shadow-2xl p-4 sm:p-6 my-auto relative max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200 mb-4 sticky top-0 bg-slate-100/95 backdrop-blur-sm z-20">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <span>منظومة وعمليات الدفع والضمان المالي (Escrow)</span>
+              </h3>
+              <button
+                onClick={() => setPaymentOperationsModalOpen(false)}
+                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-xl cursor-pointer"
+                title="إغلاق"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <PaymentOperationsManager 
+              currentUser={currentUser} 
+              onClose={() => setPaymentOperationsModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );

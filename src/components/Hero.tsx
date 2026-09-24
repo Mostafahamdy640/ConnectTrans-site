@@ -76,7 +76,7 @@ export const Hero: React.FC<HeroProps> = ({
                 onClick={onStartNow}
                 className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-base rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
               >
-                <span>إبدأ الآن</span>
+                <span>{siteContent?.heroStartBtnText || 'إبدأ الآن'}</span>
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" />
               </button>
 
@@ -98,7 +98,7 @@ export const Hero: React.FC<HeroProps> = ({
                 onClick={onExploreMore}
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm sm:text-base border border-slate-300 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
               >
-                <span>اكتشف المزيد</span>
+                <span>{siteContent?.heroExploreBtnText || 'اكتشف المزيد'}</span>
                 <div className="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px] font-bold">
                   i
                 </div>
@@ -112,7 +112,7 @@ export const Hero: React.FC<HeroProps> = ({
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-sm sm:text-base border border-emerald-300 rounded-xl transition-all shadow-2xs cursor-pointer"
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span>تتبع الشحنات المباشر (خرائط Google)</span>
+                  <span>{siteContent?.heroTrackBtnText || 'تتبع الشحنات المباشر (خرائط Google)'}</span>
                 </button>
               )}
             </div>

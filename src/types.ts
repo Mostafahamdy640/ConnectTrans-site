@@ -1,6 +1,6 @@
 // ConnectTrans Core Domain Entities & Types
 
-export type UserRole = 'admin' | 'company' | 'office' | 'vehicle_owner' | 'driver';
+export type UserRole = 'admin' | 'finance' | 'supervisor' | 'company' | 'office' | 'vehicle_owner' | 'driver';
 
 export type AccountStatus = 'pending' | 'approved' | 'rejected' | 'suspended' | 'deleted';
 
@@ -110,6 +110,8 @@ export interface Vehicle {
 export interface Driver {
   id: string;
   driverName: string;
+  displayName?: string;
+  showAlias?: boolean;
   contacts: ContactDetails;
   governorate: string;
   city: string;
@@ -283,7 +285,7 @@ export interface Trip {
   completedAt?: string;
   ratedByShipper?: boolean;
   ratedByTransporter?: boolean;
-  // Delivery Confirmation & Payout Workflow between Driver, Office, and Transporter
+  // Delivery Confirmation & Payout Workflow between Driver, Office, Finance, and Transporter
   driverDeliveryConfirmed?: boolean;
   driverDeliveryConfirmedAt?: string;
   driverDeliveryNotes?: string;
@@ -291,7 +293,12 @@ export interface Trip {
   officeVerifiedDocsAt?: string;
   officePayoutAuthorized?: boolean;
   officePayoutAuthorizedAt?: string;
-  payoutStatus?: 'pending_delivery' | 'pending_office_approval' | 'authorized_for_payout' | 'paid_out';
+  financeApproved?: boolean;
+  financeApprovedAt?: string;
+  financeAuditorName?: string;
+  financeSuspended?: boolean;
+  financeSuspensionReason?: string;
+  payoutStatus?: 'pending_delivery' | 'pending_office_approval' | 'pending_finance_release' | 'finance_suspended' | 'authorized_for_payout' | 'paid_out';
   payoutAmount?: number;
 }
 
@@ -375,6 +382,8 @@ export interface CommissionProfile {
 export interface UserAccount {
   id: string;
   name: string;
+  displayName?: string;
+  showAlias?: boolean;
   role: UserRole;
   phone: string;
   governorate: string;
@@ -398,16 +407,49 @@ export interface SitePageContent {
   heroBadgeText: string;
   heroStartBtnText: string;
   heroExploreBtnText: string;
+  heroTrackBtnText?: string;
   announcement: string;
   emergencyPhone: string;
   officialEmail: string;
   officialWhatsApp: string;
   officialAddress: string;
   vatNumber: string;
+  // Category Audience Cards (الصفحة الرئيسية)
+  companyCardTitle?: string;
+  companyCardDesc?: string;
+  companyCardBadge?: string;
+  officeCardTitle?: string;
+  officeCardDesc?: string;
+  officeCardBadge?: string;
+  driverCardTitle?: string;
+  driverCardDesc?: string;
+  driverCardBadge?: string;
+  // Dynamic Hero & Guest Banner & CMS custom keys
+  heroPrimaryBtnText?: string;
+  heroSecondaryBtnText?: string;
+  heroDriverBtnText?: string;
+  guestBannerTitle?: string;
+  guestBannerSubtext?: string;
+  categoryCompanyTitle?: string;
+  categoryCompanyDesc?: string;
+  categoryOfficeTitle?: string;
+  categoryOfficeDesc?: string;
+  categoryDriverTitle?: string;
+  categoryDriverDesc?: string;
+  footerAboutText?: string;
+  footerLegalNotice?: string;
   // About & services
   aboutHeadline: string;
   aboutDescription: string;
   servicesHeadline: string;
+  whyUsHeadline?: string;
+  whyUsSubheadline?: string;
+  feature1Title?: string;
+  feature1Desc?: string;
+  feature2Title?: string;
+  feature2Desc?: string;
+  feature3Title?: string;
+  feature3Desc?: string;
   // Role portal texts
   companyPortalTitle: string;
   companyContactNotice: string;
@@ -415,9 +457,10 @@ export interface SitePageContent {
   officePortalNotice: string;
   driverPortalTitle: string;
   driverPortalNotice: string;
-  // Footer
+  // Footer & Legal
   footerAbout: string;
   footerCopyright: string;
+  footerPrivacyNotice?: string;
   // Real Operational Trust Metrics
   metricCompletedTrips?: string;
   metricRegisteredTrucks?: string;
@@ -425,8 +468,8 @@ export interface SitePageContent {
   metricPartnerCompanies?: string;
   metricOnTimeRate?: string;
   useLiveDatabaseStats?: boolean;
-  pureDatabaseCountOnly?: boolean; // When true: strictly database pure counts without pre-accumulated baseline (e.g. 7 trucks will show 7 only)
-  activeRoadTrucksBaseline?: number; // Configurable baseline offset (defaults to 1454, or 0 if disabled)
+  pureDatabaseCountOnly?: boolean; // When true: strictly database pure counts without pre-accumulated baseline
+  activeRoadTrucksBaseline?: number; // Configurable baseline offset
 }
 
 export interface Shipment {

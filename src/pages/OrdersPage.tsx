@@ -366,49 +366,51 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'all' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                الكل ({activeTrips.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('in_progress')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'in_progress' 
-                    ? 'bg-white text-emerald-700 shadow-xs' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>على الطريق ({inProgressCount})</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('assigned')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'assigned' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                قيد التحميل ({loadingCount})
-              </button>
-              <button
-                onClick={() => setActiveTab('requests')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'requests' 
-                    ? 'bg-white text-blue-700 shadow-xs' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5 text-blue-600" />
-                <span>طلبات وحصص النقل ({requests.length})</span>
-              </button>
+            <div className="w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 lg:pb-0">
+              <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl min-w-max">
+                <button
+                  onClick={() => setActiveTab('all')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    activeTab === 'all' 
+                      ? 'bg-white text-slate-900 shadow-xs' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  الكل ({activeTrips.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('in_progress')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                    activeTab === 'in_progress' 
+                      ? 'bg-white text-emerald-700 shadow-xs' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>على الطريق ({inProgressCount})</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('assigned')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    activeTab === 'assigned' 
+                      ? 'bg-white text-slate-900 shadow-xs' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  قيد التحميل ({loadingCount})
+                </button>
+                <button
+                  onClick={() => setActiveTab('requests')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                    activeTab === 'requests' 
+                      ? 'bg-white text-blue-700 shadow-xs' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                  <span>طلبات وحصص النقل ({requests.length})</span>
+                </button>
+              </div>
             </div>
           </div>
 
